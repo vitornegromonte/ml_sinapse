@@ -1,0 +1,152 @@
+# All 6 ML workers (ocr/llm/ner/embedding/linkage/cluster). No local
+# Postgres/Redis/MinIO: they connect back to the core stack (sinapse repo,
+# docker-compose.core.yml) on the backend machine over the network, via
+# BACKEND_HOST.
+#
+# Requires BACKEND_HOST to be set (no default — the ${VAR:?...} syntax below
+# makes `docker compose up` fail immediately with a clear error instead of
+# silently building a broken connection string against an empty host):
+#
+#   BACKEND_HOST=<backend machine's IP> docker compose up
+#
+# or export it first / put it in a .env file next to this one.
+#
+# Before starting: the backend machine's firewall must allow inbound from
+# THIS machine's IP on ports 5433 (Postgres), 6380 (Redis), 9000 (MinIO).
+# Bring core services up first — these workers don't retry a failed startup
+# connection, they'll just crash if Postgres/Redis aren't reachable yet.
+
+services:
+  ocr-worker:
+    build: .
+    container_name: ml_sinapse_ocr_worker
+    command: python run_worker.py ocr
+    volumes:
+      - ./tests/fixtures/images:/fixtures/images
+      - model_cache:/model-cache
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      # sinapse_ml: least-privilege role, read silver / write gold (never
+      # silver). See sinapse/backend/alembic/versions/0004_add_ml_login_role.py (monorepo history).
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      - MINIO_ENDPOINT=http://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MODEL_BASE_PATH=/model-cache
+      # Best of 8 models on Portuguese MDPBench — see docs/adr-004-multimodal-ocr.md.
+      - OCR_MODEL_NAME=zai-org/GLM-OCR
+      # Model loading runs inside asyncio.to_thread (see ocr_worker.py), so
+      # vLLM's internal engine-core process gets forked from a non-main
+      # thread that's already touched CUDA — fails with "Cannot re-initialize
+      # CUDA in forked subprocess" without this. Found live, confirmed fix.
+      - VLLM_WORKER_MULTIPROC_METHOD=spawn
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  llm-worker:
+    build: .
+    container_name: ml_sinapse_llm_worker
+    command: python run_worker.py llm
+    volumes:
+      - model_cache:/model-cache
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      - MINIO_ENDPOINT=http://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MODEL_BASE_PATH=/model-cache
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-}
+      - LLM_ENGINE=vllm
+      # See ocr-worker's comment above — same asyncio.to_thread + vLLM fork issue.
+      - VLLM_WORKER_MULTIPROC_METHOD=spawn
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ner-worker:
+    build: .
+    container_name: ml_sinapse_ner_worker
+    command: python run_worker.py ner
+    volumes:
+      - model_cache:/model-cache
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      - MINIO_ENDPOINT=http://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MODEL_BASE_PATH=/model-cache
+      # spaCy mock (ADR-005) is CPU-only — no GPU reservation needed, unlike
+      # ocr-worker/llm-worker. Verify NER_MODEL_MINIO_PREFIX with
+      # `mc ls sinapse/models/` before relying on the default guess.
+      - NER_MODEL_MINIO_PREFIX=${NER_MODEL_MINIO_PREFIX:-ner/model-best}
+
+  embedding-worker:
+    build: .
+    container_name: ml_sinapse_embedding_worker
+    command: python run_worker.py embedding
+    volumes:
+      - model_cache:/model-cache
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      - MODEL_BASE_PATH=/model-cache
+      # neuralmind/bert-base-portuguese-cased via sentence-transformers —
+      # fixo, calibrado com o classificador de linkage. NÃO trocar sem
+      # revalidar/retreinar (ver models/embedding_model.py).
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-neuralmind/bert-base-portuguese-cased}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  linkage-worker:
+    build: .
+    container_name: ml_sinapse_linkage_worker
+    command: python run_worker.py linkage
+    volumes:
+      - model_cache:/model-cache
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      - MODEL_BASE_PATH=/model-cache
+      # Mesmo encoder do embedding-worker (reencoda entidades descritivas
+      # pro sinal sim_descricao) — mesma restrição, ver embedding-worker
+      # acima e models/embedding_model.py.
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME:-neuralmind/bert-base-portuguese-cased}
+      # bo_linkage_classifier_v1.joblib entra na imagem via COPY . . do
+      # Dockerfile (artifacts/) — caminho já bate com o default de
+      # linkage_classifier_path.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  cluster-worker:
+    build: .
+    container_name: ml_sinapse_cluster_worker
+    command: python run_worker.py cluster
+    environment:
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
+      # networkx/SQL puro sobre gold.bo_relacionado já calculado — sem
+      # encoder, sem classificador, sem GPU (ver workers/cluster_worker.py).
+
+volumes:
+  model_cache:

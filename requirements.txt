@@ -1,0 +1,37 @@
+redis[hiredis]
+pydantic-settings
+# torch/torchvision/transformers/vllm are pinned to versions with matching
+# prebuilt wheels for each other — left unpinned, pip's resolver walks vllm's
+# entire release history back to versions with no prebuilt wheel at all,
+# which then try to build from source and fail with "Cannot find CUDA_HOME"
+# (GPU access only matters at container run time, not at this build stage).
+# These exact versions are the ones verified live against real GPU hardware
+# in .venv-ocrllm-test earlier — not an arbitrary choice.
+torch==2.11.0
+torchvision==0.26.0
+transformers==5.14.1
+vllm==0.22.1
+sentencepiece
+sentence-transformers
+pgvector
+# Pinned to the exact version that trained
+# Maynara_cluster_v0/modelo_v1_classificador.joblib (LogisticRegression) —
+# left unpinned, pip installs latest and the model loads with
+# InconsistentVersionWarning; numeric output isn't guaranteed stable across
+# sklearn versions for the same serialized estimator. See
+# ml_service/workers/linkage_scoring_worker.py.
+scikit-learn==1.6.1
+# connected-components clustering — ml_service/workers/cluster_worker.py
+networkx
+spacy
+protobuf
+mlflow
+requests
+Pillow
+safetensors
+minio
+opencv-python-headless
+pymupdf
+sqlalchemy[asyncio]
+asyncpg
+qwen-vl-utils

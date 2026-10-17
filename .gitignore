@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Real secrets (DB/Redis/MinIO password overrides) — never belongs in git.
+.env
+.env.*
+
+# Model weights synced on first use (ADR-006) — never belongs in git.
+model-cache/
+/model-cache
+
+# OCR test fixtures downloaded on demand (scripts/download_test_images.py).
+tests/fixtures/images/*
+!tests/fixtures/images/.gitkeep
+
+# Editor/IDE
+.idea/
+.vscode/

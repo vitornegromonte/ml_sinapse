@@ -1,0 +1,174 @@
+"""Consumes cluster:tasks (mensagem-gatilho, payload ignorado) e roda o job
+completo de clustering — porta clusters_por_natureza de
+Maynara_cluster_v0/motor_linkage.py de "consulta pontual filtrada por uma
+natureza" pra "job em lote sobre o grafo inteiro de gold.bo_relacionado".
+
+DIVERGÊNCIA DELIBERADA do motor original: clusters_por_natureza() sempre
+filtra por UMA natureza antes de montar o grafo — um cluster nunca mistura
+furto com roubo. Aqui o grafo é construído sobre TODAS as arestas
+score >= cluster_score_threshold de uma vez, sem esse filtro — decisão
+explícita, não uma omissão (um BO pode legitimamente conectar através de
+naturezas diferentes, ex. mesmo documento aparecendo num furto e depois
+numa ameaça).
+
+Threshold: 0.9, o valor que o README do Maynara_cluster_v0 chama de
+"calibrado nesta versão" — não o default 0.5 embutido no código-fonte de
+clusters_por_natureza() (os dois divergem no pacote original).
+
+Não incremental por natureza: precisa do grafo inteiro pra componentes
+conexos ficarem corretos, não dá pra processar por mensagem-por-par sem
+reprocessar tudo mesmo — daí o modelo de disparo por gatilho único.
+
+Achado conhecido, NÃO mascarado aqui: o mesmo ruído de NER que inflou os
+scores de linkage (ver linkage_scoring_worker.py — OBJETO_VEICULO/
+DOCUMENTO capturando categoria genérica) colapsa boa parte do grafo num
+componente gigante via conexões transitivas (A-B via "Motocicleta", B-C via
+"Rg", A e C acabam no mesmo cluster sem relação direta nenhuma). Confirmado
+com dado real: 490.055 arestas -> 153 componentes, um deles com 4.634 dos
+5.013 nós. O worker grava esse resultado como está — o código está
+correto, o problema é upstream (qualidade do NER), não algo pra filtrar ou
+mascarar na camada de clustering.
+
+gold.clusters.is_current opera no nível do CLUSTER INTEIRO (ver
+app/modules/gold/models.py docstring): toda vez que este job roda, TODOS os
+clusters da leva anterior são marcados is_current=false em lote antes da
+leva nova entrar — não há chave lógica por cluster individual pra
+supersede-then-insert par a par como bo_embedding/bo_relacionado.
+"""
+import asyncio
+import json
+
+import networkx as nx
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from config import settings
+from workers.base_worker import BaseWorker
+
+MODEL_NAME = "bo_linkage_cluster"
+MODEL_VERSION = "v1_componentes_conexos"
+
+
+class ClusterWorker(BaseWorker):
+    def __init__(self, cfg=settings):
+        super().__init__(cfg.cluster_stream, cfg)
+        self._model_id: int | None = None
+
+    async def _get_or_create_model_id(self, db: AsyncSession) -> int:
+        if self._model_id is not None:
+            return self._model_id
+
+        result = await db.execute(
+            text("SELECT id FROM gold.model_registry WHERE name = :name AND version = :version"),
+            {"name": MODEL_NAME, "version": MODEL_VERSION},
+        )
+        row = result.first()
+        if row is not None:
+            self._model_id = row[0]
+            return self._model_id
+
+        result = await db.execute(
+            text(
+                """
+                INSERT INTO gold.model_registry (name, version, stage, hyperparameters)
+                VALUES (:name, :version, 'production', :hyperparameters)
+                RETURNING id
+                """
+            ),
+            {
+                "name": MODEL_NAME,
+                "version": MODEL_VERSION,
+                "hyperparameters": json.dumps({
+                    "algoritmo": "networkx.connected_components",
+                    "score_threshold": self.cfg.cluster_score_threshold,
+                }),
+            },
+        )
+        self._model_id = result.scalar_one()
+        return self._model_id
+
+    async def _carregar_arestas(self, db: AsyncSession) -> list[tuple[int, int]]:
+        result = await db.execute(
+            text(
+                """
+                SELECT id_bo_origem, id_bo_destino
+                FROM gold.bo_relacionado
+                WHERE is_current AND score_sim >= :threshold
+                """
+            ),
+            {"threshold": self.cfg.cluster_score_threshold},
+        )
+        return [(row[0], row[1]) for row in result.fetchall()]
+
+    def _montar_componentes(self, arestas: list[tuple[int, int]]) -> list[list[int]]:
+        grafo = nx.Graph()
+        grafo.add_edges_from(arestas)
+        componentes = [sorted(c) for c in nx.connected_components(grafo)]
+        componentes.sort(key=len, reverse=True)
+        return componentes
+
+    async def process(self, data: dict) -> None:
+        """Payload da mensagem é ignorado — qualquer mensagem em
+        cluster:tasks dispara o job completo. Ver docstring do módulo."""
+        async with self.db_session_factory() as db:  # type: AsyncSession
+            arestas = await self._carregar_arestas(db)
+
+        if not arestas:
+            self.logger.info("Nenhuma aresta com score >= %.2f — nada a clusterizar.", self.cfg.cluster_score_threshold)
+            return
+
+        componentes = await asyncio.to_thread(self._montar_componentes, arestas)
+        self.logger.info(
+            "Grafo: %d arestas -> %d componentes conexos (maior: %d membros)",
+            len(arestas), len(componentes), len(componentes[0]) if componentes else 0,
+        )
+
+        async with self.db_session_factory() as db:  # type: AsyncSession
+            async with db.begin():
+                model_id = await self._get_or_create_model_id(db)
+
+                # is_current no nível do CLUSTER INTEIRO — supersede em
+                # lote da leva anterior, não par a par (ver docstring do
+                # módulo e de app/modules/gold/models.py).
+                await db.execute(
+                    text(
+                        "UPDATE gold.clusters SET is_current = false, superseded_at = now() WHERE is_current = true"
+                    )
+                )
+
+                pipeline_run_id = data.get("pipeline_run_id")
+                total_membros = 0
+                for membros in componentes:
+                    result = await db.execute(
+                        text(
+                            """
+                            INSERT INTO gold.clusters (model_id, generated_at, pipeline_run_id)
+                            VALUES (:model_id, now(), :pipeline_run_id)
+                            RETURNING id_cluster
+                            """
+                        ),
+                        {"model_id": model_id, "pipeline_run_id": pipeline_run_id},
+                    )
+                    id_cluster = result.scalar_one()
+
+                    for boletim_id in membros:
+                        await db.execute(
+                            text(
+                                """
+                                INSERT INTO gold.bo_cluster (cluster_id, boletim_id)
+                                VALUES (:cluster_id, :boletim_id)
+                                """
+                            ),
+                            {"cluster_id": id_cluster, "boletim_id": boletim_id},
+                        )
+                    total_membros += len(membros)
+
+        self.logger.info(
+            "Clustering gravado: %d clusters, %d BOs agrupados", len(componentes), total_membros
+        )
+
+    def run(self) -> None:
+        try:
+            super().run()
+        finally:
+            self.logger.info("Cluster worker finished")
