@@ -3,11 +3,13 @@
 embedding corrente em gold.bo_embedding — o backfill inicial para popular a
 tabela que EmbeddingWorker consome (ver workers/embedding_worker.py).
 
-Não escreve no banco diretamente: só lê silver.boletim (texto) e
-gold.bo_embedding (para saber o que já tem embedding) e publica mensagens em
-embedding:tasks. Quem grava é o EmbeddingWorker já rodando do outro lado —
-mesma separação producer/consumer que o resto do pipeline usa (ver
-services/task_publisher.py).
+Não escreve no banco diretamente: só lê silver.boletim (para saber quem tem
+narrativa e ainda não tem embedding corrente) e publica o boletim_id em
+embedding:tasks. O texto em si não viaja na mensagem — o EmbeddingWorker lê
+de silver.boletim, para o backlog não carregar KBs de texto por tarefa em
+Redis RAM (ver services/task_publisher.py). Quem grava é o EmbeddingWorker já
+rodando do outro lado — mesma separação producer/consumer que o resto do
+pipeline usa.
 
 Idempotente por natureza: um boletim_id que já tem uma linha is_current=true
 em gold.bo_embedding é pulado. Rodar de novo depois de uma falha parcial (ou
@@ -44,7 +46,7 @@ async def _fetch_pending_boletins(db, limit: int | None) -> list[dict]:
     """Boletins com narrativa não vazia e sem embedding corrente ainda."""
     query = sql_text(
         """
-        SELECT b.id_infopol, b.narrativa_normalizada
+        SELECT b.id_infopol
         FROM silver.boletim b
         LEFT JOIN gold.bo_embedding e
             ON e.boletim_id = b.id_infopol AND e.is_current = true
@@ -57,7 +59,7 @@ async def _fetch_pending_boletins(db, limit: int | None) -> list[dict]:
     )
     params = {"limit": limit} if limit else {}
     result = await db.execute(query, params)
-    return [{"boletim_id": row[0], "text": row[1]} for row in result.fetchall()]
+    return [{"boletim_id": row[0]} for row in result.fetchall()]
 
 
 async def backfill(limit: int | None, dry_run: bool) -> None:
@@ -85,7 +87,6 @@ async def backfill(limit: int | None, dry_run: bool) -> None:
             await wait_for_capacity(settings.embedding_stream)
         await enqueue(settings.embedding_stream, {
             "boletim_id": item["boletim_id"],
-            "text": item["text"],
         })
         enfileirados += 1
 

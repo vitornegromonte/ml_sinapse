@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     # pending) rather than dropped — this is how long it sits idle before
     # XAUTOCLAIM reclaims it for another attempt. See workers/base_worker.py.
     claim_idle_ms: int = 30000
+    # While a message is in flight the worker heartbeats a short-TTL lease so
+    # another replica's XAUTOCLAIM sweep doesn't steal work that is still
+    # running — claim_idle_ms alone can't tell "slow" from "crashed".
+    lease_heartbeat_seconds: int = 10
+    lease_ttl_seconds: int = 30
 
     log_level: str = "INFO"
 

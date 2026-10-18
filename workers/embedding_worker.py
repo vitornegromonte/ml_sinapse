@@ -1,6 +1,10 @@
 """Consumes embedding:tasks, encodes BO narrative text, and writes the
 resulting vector to gold.bo_embedding.
 
+The narrative is read from silver.boletim by boletim_id: the task message
+carries only the id, so the backfill backlog stays small in Redis (see
+services/task_publisher.py) instead of shipping KBs of text per task.
+
 Unlike ocr_worker/ner_worker (which only log or publish a result for a
 downstream consumer to apply), this worker writes Gold directly — sinapse_ml
 already has write grants there, and gold.bo_embedding is exactly the kind of
@@ -93,19 +97,39 @@ class EmbeddingWorker(BaseWorker):
         self._model_id = result.scalar_one()
         return self._model_id
 
-    async def process(self, data: dict) -> None:
-        if self._encoder is None:
-            await asyncio.to_thread(self._load_model)
+    async def _load_narrativa(self, db: AsyncSession, boletim_id: int) -> str | None:
+        result = await db.execute(
+            text(
+                "SELECT narrativa_normalizada FROM silver.boletim "
+                "WHERE id_infopol = :id"
+            ),
+            {"id": boletim_id},
+        )
+        row = result.first()
+        return row[0] if row is not None else None
 
+    async def process(self, data: dict) -> None:
         boletim_id = data.get("boletim_id")
-        text_content = data.get("text")
-        if not boletim_id or not text_content or not text_content.strip():
+        if not boletim_id:
             self.logger.warning(
-                "Skipping message with missing boletim_id/text: %s", data
+                "Skipping message with missing boletim_id: %s", data
             )
             return
 
         boletim_id = int(boletim_id)
+
+        async with self.db_session_factory() as db:  # type: AsyncSession
+            text_content = await self._load_narrativa(db, boletim_id)
+
+        if not text_content or not text_content.strip():
+            self.logger.warning(
+                "Skipping boletim_id=%s — no narrative text in silver.boletim",
+                boletim_id,
+            )
+            return
+
+        if self._encoder is None:
+            await asyncio.to_thread(self._load_model)
 
         vec = await asyncio.to_thread(self._encoder.encode, [text_content])
         embedding = vec[0].tolist()
