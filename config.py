@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     linkage_stream: str = "linkage:tasks"
     cluster_stream: str = "cluster:tasks"
     dead_letter_suffix: str = ":dead"
+    # Bound the dead-letter stream: without this it grows forever (every
+    # permanently failing message is appended and nothing ever reads it).
+    dead_letter_maxlen: int = 10000
+    dead_letter_ttl_seconds: int = 2592000  # 30 days
 
     consumer_group: str = "ml-workers"
     consumer_id: str = ""
@@ -113,6 +117,11 @@ class Settings(BaseSettings):
     # pending) rather than dropped — this is how long it sits idle before
     # XAUTOCLAIM reclaims it for another attempt. See workers/base_worker.py.
     claim_idle_ms: int = 30000
+    # While a message is in flight the worker heartbeats a short-TTL lease so
+    # another replica's XAUTOCLAIM sweep doesn't steal work that is still
+    # running — claim_idle_ms alone can't tell "slow" from "crashed".
+    lease_heartbeat_seconds: int = 10
+    lease_ttl_seconds: int = 30
 
     log_level: str = "INFO"
 

@@ -93,6 +93,7 @@ class TestReclaimStale:
             ("123-0", [("claimed-msg-1", {"x": 1})], []),
             ("0-0", [], []),
         ]
+        w.redis.exists = AsyncMock(return_value=0)  # no live lease
 
         await w._reclaim_stale()
 
@@ -110,3 +111,17 @@ class TestReclaimStale:
         w.redis.xautoclaim.side_effect = RuntimeError("connection lost")
 
         await w._reclaim_stale()  # must not raise
+
+    async def test_does_not_reclaim_a_message_whose_lease_is_alive(self):
+        """A message another replica is still processing (heartbeat lease
+        alive) must not be stolen — that duplication was the bug."""
+        w = _FailNTimesWorker(fail_times=0, stream="test:stream")
+        w.redis = AsyncMock()
+        w.redis.exists = AsyncMock(return_value=1)  # lease still held
+        w.redis.xautoclaim.side_effect = [
+            ("0-0", [("busy-msg", {"x": 1})], []),
+        ]
+
+        await w._reclaim_stale()
+
+        assert w.attempts == 0  # skipped, not reprocessed

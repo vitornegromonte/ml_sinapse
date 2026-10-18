@@ -72,6 +72,29 @@ class BaseWorker(ABC):
         key = f"{self.stream}:retries"
         await self.redis.hdel(key, message_id)
 
+    def _lease_key(self, message_id: str) -> str:
+        return f"{self.stream}:lease:{message_id}"
+
+    async def _heartbeat(self, lease_key: str) -> None:
+        """Keep a short-TTL lease alive while the message is in flight.
+
+        Without it, XAUTOCLAIM can only distinguish "idle a while" from "still
+        running" by time, so any task slower than claim_idle_ms gets stolen and
+        processed twice (see _reclaim_stale)."""
+        while True:
+            await asyncio.sleep(self.cfg.lease_heartbeat_seconds)
+            try:
+                await self.redis.set(
+                    lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
+                )
+            except Exception as exc:
+                self.logger.warning(
+                    "Lease heartbeat failed for %s: %s", lease_key, exc
+                )
+
+    async def _lease_alive(self, message_id: str) -> bool:
+        return bool(await self.redis.exists(self._lease_key(message_id)))
+
     async def _dead_letter(
         self, message_id: str, data: dict, error: str
     ) -> None:
@@ -84,7 +107,10 @@ class BaseWorker(ABC):
                 "error": error,
                 "timestamp": str(time.time()),
             },
+            maxlen=self.cfg.dead_letter_maxlen,
+            approximate=True,
         )
+        await self.redis.expire(dlq_stream, self.cfg.dead_letter_ttl_seconds)
         self.logger.warning(
             "Moved %s to DLQ %s: %s", message_id, dlq_stream, error
         )
@@ -113,6 +139,13 @@ class BaseWorker(ABC):
                     count=self.cfg.batch_size,
                 )
                 for message_id, raw in claimed:
+                    if await self._lease_alive(message_id):
+                        self.logger.info(
+                            "Not reclaiming %s — another consumer still holds "
+                            "its lease",
+                            message_id,
+                        )
+                        continue
                     await self._process_message(message_id, raw)
                 if cursor == "0-0":
                     break
@@ -122,6 +155,12 @@ class BaseWorker(ABC):
     async def _process_message(
         self, message_id: str, data: dict
     ) -> None:
+        lease_key = self._lease_key(message_id)
+        # Set before processing so a concurrent reclaim sees the lease.
+        await self.redis.set(
+            lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
+        )
+        heartbeat = asyncio.create_task(self._heartbeat(lease_key))
         try:
             await self.process(data)
             await self.redis.xack(self.stream, self.group, message_id)
@@ -147,6 +186,15 @@ class BaseWorker(ABC):
                 # Deliberately NOT acking: an acked message can never be
                 # redelivered by Redis Streams. Leaving it pending is what
                 # lets _reclaim_stale() pick it back up for another attempt.
+        finally:
+            heartbeat.cancel()
+            try:
+                await heartbeat
+            except asyncio.CancelledError:
+                pass
+            # Released either way: on success the message is acked; on failure
+            # the retry must be reclaimable again after claim_idle_ms.
+            await self.redis.delete(lease_key)
 
     async def start(self) -> None:
         self.redis = await self._connect_redis()
