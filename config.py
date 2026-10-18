@@ -75,7 +75,6 @@ class Settings(BaseSettings):
     tokenizer_gpu_device: int = 0
 
     llm_model_path: str = ""
-    llm_engine: str = "vllm"
     llm_gpu_device: int = 0
     llm_gpu_memory_utilization: float = 0.9
     llm_max_model_len: int | None = None

@@ -22,7 +22,6 @@ class LlmWorker(BaseWorker):
     def _load_model(self) -> None:
         self._llm = LLMModel(
             model_path=self.cfg.llm_model_path,
-            engine="vllm",
             device=f"cuda:{self.cfg.llm_gpu_device}",
             gpu_memory_utilization=self.cfg.llm_gpu_memory_utilization,
             max_model_len=self.cfg.llm_max_model_len,

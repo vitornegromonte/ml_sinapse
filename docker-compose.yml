@@ -62,7 +62,6 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MODEL_BASE_PATH=/model-cache
       - LLM_MODEL_PATH=${LLM_MODEL_PATH:-}
-      - LLM_ENGINE=vllm
       # See ocr-worker's comment above — same asyncio.to_thread + vLLM fork issue.
       - VLLM_WORKER_MULTIPROC_METHOD=spawn
     deploy:

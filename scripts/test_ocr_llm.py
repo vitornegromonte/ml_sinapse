@@ -71,7 +71,6 @@ async def main():
     print("Carregando modelo LLM (Gemma 4 via vLLM)...")
     llm = LLMModel(
         model_path="google/gemma-4-E4B-it",
-        engine="vllm",
         device="cuda:1",
         gpu_memory_utilization=0.9,
         max_model_len=32768,
