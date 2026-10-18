@@ -84,7 +84,10 @@ class BaseWorker(ABC):
                 "error": error,
                 "timestamp": str(time.time()),
             },
+            maxlen=self.cfg.dead_letter_maxlen,
+            approximate=True,
         )
+        await self.redis.expire(dlq_stream, self.cfg.dead_letter_ttl_seconds)
         self.logger.warning(
             "Moved %s to DLQ %s: %s", message_id, dlq_stream, error
         )

@@ -45,7 +45,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings  # noqa: E402
 from services.database import create_db_engine, create_session_factory  # noqa: E402
-from services.task_publisher import enqueue  # noqa: E402
+from services.task_publisher import enqueue, wait_for_capacity  # noqa: E402
 from sqlalchemy import text as sql_text  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s")
@@ -171,6 +171,10 @@ async def backfill(top_k: int, limit: int | None, dry_run: bool) -> None:
 
     enfileirados = 0
     for id_a, id_b in tqdm(pares, desc="Enfileirando", unit="par"):
+        if enfileirados % 500 == 0:
+            # Don't outrun the worker: the task stream is never trimmed, so
+            # without this the whole backlog would sit in Redis RAM.
+            await wait_for_capacity(settings.linkage_stream)
         await enqueue(settings.linkage_stream, {
             "id_bo_origem": id_a,
             "id_bo_destino": id_b,

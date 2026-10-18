@@ -103,6 +103,10 @@ class Settings(BaseSettings):
     linkage_stream: str = "linkage:tasks"
     cluster_stream: str = "cluster:tasks"
     dead_letter_suffix: str = ":dead"
+    # Bound the dead-letter stream: without this it grows forever (every
+    # permanently failing message is appended and nothing ever reads it).
+    dead_letter_maxlen: int = 10000
+    dead_letter_ttl_seconds: int = 2592000  # 30 days
 
     consumer_group: str = "ml-workers"
     consumer_id: str = ""
