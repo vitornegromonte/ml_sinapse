@@ -1,0 +1,37 @@
+# Secrets: docker-compose reads a .env next to it — it must never enter the image.
+.env
+**/.env
+**/.env.*
+
+# VCS metadata
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+**/*.py[cod]
+.pytest_cache/
+**/.pytest_cache/
+.venv/
+venv/
+
+# Model weights are synced at runtime (ADR-006), never baked in.
+model-cache/
+**/model-cache/
+
+# OCR test fixtures are downloaded on demand (scripts/download_test_images.py).
+tests/fixtures/images/*
+!tests/fixtures/images/.gitkeep
+
+# Editor / IDE
+.idea/
+.vscode/
+
+# Tooling output and reports, not needed at runtime.
+.opencode/
+graphify-out/
+architecture.html
+architecture.md
+TASK.md
