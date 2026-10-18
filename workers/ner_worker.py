@@ -4,7 +4,6 @@ import spacy
 from spacy import Language
 
 from config import settings
-from models.base_model import BaseModelWrapper
 from services.model_sync import sync_if_missing
 from workers.base_worker import BaseWorker
 

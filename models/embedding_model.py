@@ -1,11 +1,10 @@
-"""Text encoder abstraction for BO embeddings.
+"""Text encoder for BO embeddings.
 
-TextEncoder is deliberately a thin Protocol, not tied to sentence-transformers
-specifically — the linkage classifier (Maynara_cluster_v0/
-modelo_v1_classificador.joblib) only cares about the resulting vector, not
-which library produced it. This lets a future encoder (e.g. one served via
-vLLM's --task embed, once that's validated here) drop in as a second
-implementation without touching EmbeddingWorker.
+Only SentenceTransformerEncoder exists — the Protocol seam that used to be
+declared here had no second implementation and nothing depended on it. The
+linkage classifier (Maynara_cluster_v0/modelo_v1_classificador.joblib) only
+cares about the resulting vector, so another encoder (e.g. one served via
+vLLM's --task embed) can be added if and when one is actually validated here.
 
 CRITICAL: the classifier was calibrated against
 sentence-transformers.SentenceTransformer("neuralmind/bert-base-portuguese-
@@ -19,17 +18,10 @@ without re-validating (or retraining) the classifier against the new space.
 from __future__ import annotations
 
 import logging
-from typing import Protocol
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
-
-class TextEncoder(Protocol):
-    def encode(self, texts: list[str]) -> np.ndarray:
-        """Return an (n_texts, dim) float32 array, one row per input text."""
-        ...
 
 
 class SentenceTransformerEncoder:

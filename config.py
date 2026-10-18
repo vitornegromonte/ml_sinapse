@@ -41,11 +41,9 @@ class Settings(BaseSettings):
     # (Maynara_cluster_v0/modelo_v1_classificador.joblib) — MUST stay this
     # exact model + pooling. Swapping the encoder changes the embedding space
     # and silently invalidates the classifier's calibration without raising
-    # any error. See models/embedding_model.py's EmbeddingEncoder docstring.
+    # any error. See models/embedding_model.py's SentenceTransformerEncoder docstring.
     embedding_model_name: str = "neuralmind/bert-base-portuguese-cased"
-    embedding_dim: int = 768
     embedding_gpu_device: int = 0
-    embedding_batch_size: int = 32
 
     # Classificador calibrado do motor de linkage (Maynara_cluster_v0) — ver
     # workers/linkage_scoring_worker.py. Roda na mesma GPU do
@@ -53,7 +51,6 @@ class Settings(BaseSettings):
     # em si; o que pesa é reencodar descrições, mesmo encoder do embedding).
     linkage_classifier_path: str = "/app/artifacts/bo_linkage_classifier_v1.joblib"
     linkage_gpu_device: int = 0
-    linkage_tau_geo_km: float = 15.0
     linkage_tau_dias: float = 30.0
     linkage_limiar_descricao: float = 0.6
 
@@ -64,15 +61,11 @@ class Settings(BaseSettings):
     cluster_score_threshold: float = 0.9
 
     ner_model_path: str = "/model-cache/spacy/ner-model"
-    ner_gpu_device: int = 0
     # Where the spaCy model directory lives under the `models` bucket when it's
     # raw files (not MLflow-registered). GUESS based on ADR-005's `model-best/`
     # naming — verify with `mc ls sinapse/models/` and override if different.
     # Only used as a fallback when ner_model_uri is unset.
     ner_model_minio_prefix: str = "ner/model-best"
-
-    tokenizer_model_path: str = "/model-cache/bertimbau"
-    tokenizer_gpu_device: int = 0
 
     llm_model_path: str = ""
     llm_gpu_device: int = 0
@@ -96,7 +89,6 @@ class Settings(BaseSettings):
 
     ocr_stream: str = "ocr:tasks"
     ner_stream: str = "ner:tasks"
-    tokenizer_stream: str = "tokenizer:tasks"
     llm_stream: str = "llm:tasks"
     embedding_stream: str = "embedding:tasks"
     linkage_stream: str = "linkage:tasks"
@@ -129,16 +121,10 @@ class Settings(BaseSettings):
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_bucket_bronze: str = "bronze"
-    minio_bucket_mlflow: str = "mlflow-artifacts"
     minio_bucket_models: str = "models"
-
-    mlflow_tracking_uri: str = "http://mlflow:5000"
-    mlflow_registry_uri: str = "http://mlflow:5000"
 
     ner_model_uri: str = ""
     ocr_model_uri: str = ""
-    tokenizer_model_uri: str = ""
-    llm_model_uri: str = ""
 
 
 settings = Settings()

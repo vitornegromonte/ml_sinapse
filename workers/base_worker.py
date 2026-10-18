@@ -59,11 +59,6 @@ class BaseWorker(ABC):
             if "BUSYGROUP" not in str(exc):
                 raise
 
-    async def _get_retries(self, message_id: str) -> int:
-        key = f"{self.stream}:retries"
-        val = await self.redis.hget(key, message_id)
-        return int(val) if val else 0
-
     async def _increment_retries(self, message_id: str) -> int:
         key = f"{self.stream}:retries"
         return await self.redis.hincrby(key, message_id, 1)
