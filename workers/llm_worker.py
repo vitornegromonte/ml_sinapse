@@ -3,6 +3,7 @@ import logging
 
 from config import settings
 from models.llm_model import LLMModel
+from models.tasks import LlmTask
 from services.result_publisher import ResultPublisher
 from services.storage import StorageService
 from workers.base_worker import BaseWorker
@@ -66,11 +67,10 @@ class LlmWorker(BaseWorker):
         if self._llm is None:
             await asyncio.to_thread(self._load_model)
 
-        doc_id = data.get("document_id")
-        if not doc_id:
-            raise ValueError("Payload must contain 'document_id'")
+        task = LlmTask(**data)
+        doc_id = task.document_id
 
-        text = data.get("text")
+        text = task.text
         if not text or not text.strip():
             self.logger.warning(
                 "Empty text for document_id=%s, skipping", doc_id
