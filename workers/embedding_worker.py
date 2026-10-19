@@ -20,13 +20,13 @@ separate deployables that shouldn't share a Python package boundary (same
 rationale ocr_result_consumer.py gives for not reusing BaseWorker).
 """
 import asyncio
-import json
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models.embedding_model import SentenceTransformerEncoder
+from services.gold import get_or_create_model_id
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_encoder"
@@ -37,7 +37,6 @@ class EmbeddingWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.embedding_stream, cfg)
         self._encoder: SentenceTransformerEncoder | None = None
-        self._model_id: int | None = None
 
     def _load_model(self) -> None:
         device = (
@@ -56,46 +55,6 @@ class EmbeddingWorker(BaseWorker):
             return torch.cuda.is_available()
         except ImportError:
             return False
-
-    async def _get_or_create_model_id(self, db: AsyncSession) -> int:
-        """Mirrors import_bo_ner.py's get_or_create_model_registry pattern —
-        one row per (name, version), reused across every embedding this
-        worker writes. Resolved once and cached on the instance, not
-        re-queried per message.
-
-        Must be called from inside an already-open `async with db.begin()`
-        block (see process()) — this method does NOT commit itself, so its
-        INSERT lands in whatever transaction the caller already started."""
-        if self._model_id is not None:
-            return self._model_id
-
-        result = await db.execute(
-            text(
-                "SELECT id FROM gold.model_registry WHERE name = :name AND version = :version"
-            ),
-            {"name": MODEL_NAME, "version": MODEL_VERSION},
-        )
-        row = result.first()
-        if row is not None:
-            self._model_id = row[0]
-            return self._model_id
-
-        result = await db.execute(
-            text(
-                """
-                INSERT INTO gold.model_registry (name, version, stage, hyperparameters)
-                VALUES (:name, :version, 'production', :hyperparameters)
-                RETURNING id
-                """
-            ),
-            {
-                "name": MODEL_NAME,
-                "version": MODEL_VERSION,
-                "hyperparameters": json.dumps({"library": "sentence-transformers"}),
-            },
-        )
-        self._model_id = result.scalar_one()
-        return self._model_id
 
     async def _load_narrativa(self, db: AsyncSession, boletim_id: int) -> str | None:
         result = await db.execute(
@@ -145,7 +104,12 @@ class EmbeddingWorker(BaseWorker):
             # would already have an implicit transaction open, and this
             # explicit begin() would then conflict with it.
             async with db.begin():
-                model_id = await self._get_or_create_model_id(db)
+                model_id = await get_or_create_model_id(
+                    db,
+                    MODEL_NAME,
+                    MODEL_VERSION,
+                    {"library": "sentence-transformers"},
+                )
 
                 await db.execute(
                     text(

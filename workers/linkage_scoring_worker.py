@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models.embedding_model import SentenceTransformerEncoder
+from services.gold import get_or_create_model_id
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_classifier"
@@ -108,7 +109,6 @@ class LinkageScoringWorker(BaseWorker):
         super().__init__(cfg.linkage_stream, cfg)
         self._encoder: SentenceTransformerEncoder | None = None
         self._clf = None
-        self._model_id: int | None = None
 
     def _load_model(self) -> None:
         import joblib
@@ -133,36 +133,6 @@ class LinkageScoringWorker(BaseWorker):
             return torch.cuda.is_available()
         except ImportError:
             return False
-
-    async def _get_or_create_model_id(self, db: AsyncSession) -> int:
-        if self._model_id is not None:
-            return self._model_id
-
-        result = await db.execute(
-            text("SELECT id FROM gold.model_registry WHERE name = :name AND version = :version"),
-            {"name": MODEL_NAME, "version": MODEL_VERSION},
-        )
-        row = result.first()
-        if row is not None:
-            self._model_id = row[0]
-            return self._model_id
-
-        result = await db.execute(
-            text(
-                """
-                INSERT INTO gold.model_registry (name, version, stage, hyperparameters)
-                VALUES (:name, :version, 'production', :hyperparameters)
-                RETURNING id
-                """
-            ),
-            {
-                "name": MODEL_NAME,
-                "version": MODEL_VERSION,
-                "hyperparameters": '{"algoritmo": "LogisticRegression", "C": 1000.0, "class_weight": "balanced"}',
-            },
-        )
-        self._model_id = result.scalar_one()
-        return self._model_id
 
     async def _load_perfil(self, db: AsyncSession, boletim_id: int) -> dict | None:
         """Monta o que score_par precisa de um BO a partir do que já está
@@ -339,7 +309,16 @@ class LinkageScoringWorker(BaseWorker):
 
         async with self.db_session_factory() as db:  # type: AsyncSession
             async with db.begin():
-                model_id = await self._get_or_create_model_id(db)
+                model_id = await get_or_create_model_id(
+                    db,
+                    MODEL_NAME,
+                    MODEL_VERSION,
+                    {
+                        "algoritmo": "LogisticRegression",
+                        "C": 1000.0,
+                        "class_weight": "balanced",
+                    },
+                )
 
                 await db.execute(
                     text(
