@@ -10,23 +10,27 @@ Usage:
     python run_worker.py cluster
 """
 
+import importlib
 import sys
 
-from workers.cluster_worker import ClusterWorker
-from workers.embedding_worker import EmbeddingWorker
-from workers.linkage_scoring_worker import LinkageScoringWorker
-from workers.ocr_worker import OcrWorker
-from workers.llm_worker import LlmWorker
-from workers.ner_worker import NerWorker
-
+# name -> "module:Class". Resolved in main(), not imported here: each worker
+# pulls a different heavy stack (torch/vLLM, spaCy, sentence-transformers,
+# scikit-learn), so a container used to load all six before starting the one it
+# was asked for, and a missing optional dependency in any of them broke every
+# worker's boot. This keeps `python run_worker.py <name>` paying only for <name>.
 WORKERS = {
-    "ocr": OcrWorker,
-    "llm": LlmWorker,
-    "ner": NerWorker,
-    "embedding": EmbeddingWorker,
-    "linkage": LinkageScoringWorker,
-    "cluster": ClusterWorker,
+    "ocr": "workers.ocr_worker:OcrWorker",
+    "llm": "workers.llm_worker:LlmWorker",
+    "ner": "workers.ner_worker:NerWorker",
+    "embedding": "workers.embedding_worker:EmbeddingWorker",
+    "linkage": "workers.linkage_scoring_worker:LinkageScoringWorker",
+    "cluster": "workers.cluster_worker:ClusterWorker",
 }
+
+
+def resolve(name: str):
+    module_name, _, class_name = WORKERS[name].partition(":")
+    return getattr(importlib.import_module(module_name), class_name)
 
 
 def main():
@@ -36,7 +40,7 @@ def main():
         print(f"Unknown worker '{name}'. Available: {available}")
         sys.exit(1)
 
-    worker = WORKERS[name]()
+    worker = resolve(name)()
     worker.run()
 
 
