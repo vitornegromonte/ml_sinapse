@@ -18,7 +18,19 @@ from config import Settings, settings
 
 
 def create_db_engine(cfg: Settings = settings) -> AsyncEngine:
-    return create_async_engine(cfg.ml_database_url, echo=False)
+    return create_async_engine(
+        cfg.ml_database_url,
+        echo=False,
+        # Workers idle between batches, so their pooled connections can be
+        # closed by the server/network in the meantime; without pre_ping the
+        # first query after that raises and the task goes to the DLQ for a
+        # reason that looks like a bug in the worker. Pre-ping recycles a dead
+        # connection instead.
+        pool_pre_ping=True,
+        # asyncpg's connect timeout, in seconds (default 60). Bounds dialing a
+        # host that is up but unreachable, rather than pinning the worker.
+        connect_args={"timeout": 30},
+    )
 
 
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
