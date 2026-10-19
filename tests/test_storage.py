@@ -32,10 +32,13 @@ class TestStorageService:
         assert path == "ml-results/ocr/doc-1"
         mock_minio.put_object.assert_called_once()
 
-    def test_save_failure_logs_warning(self, storage, mock_minio):
+    def test_save_failure_raises(self, storage, mock_minio):
+        """Falha de escrita no bronze deve propagar, não retornar None: a task
+        precisa cair no retry/DLQ em vez de ser acked com o texto só no Redis."""
         mock_minio.put_object.side_effect = Exception("connection refused")
-        path = storage.save("ocr", "doc-1", TEXT.encode())
-        assert path is None
+
+        with pytest.raises(Exception, match="connection refused"):
+            storage.save("ocr", "doc-1", TEXT.encode())
 
     def test_load_success(self, storage, mock_minio):
         mock_response = MagicMock()

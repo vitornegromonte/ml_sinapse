@@ -92,17 +92,19 @@ class OcrWorker(BaseWorker):
             text,
         )
 
+        # Bronze before the results notification: save() raises on failure, so
+        # a MinIO outage fails the task (retry → DLQ) instead of publishing a
+        # result for text that never landed in bronze.
+        self._ensure_storage()
+        self._storage.save(
+            prefix="ocr",
+            document_id=task.document_id,
+            data=text.encode("utf-8"),
+        )
+
         self._ensure_publisher()
         if self._result_publisher is not None:
             await self._result_publisher.publish(task.model_dump(), text)
-
-        self._ensure_storage()
-        if self._storage is not None:
-            self._storage.save(
-                prefix="ocr",
-                document_id=task.document_id,
-                data=text.encode("utf-8"),
-            )
 
     async def _process_image(self, task: OcrTask) -> str:
         image = await asyncio.to_thread(self._image_loader.load, task.model_dump())

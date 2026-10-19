@@ -161,6 +161,9 @@ class TestOcrWorker:
             patch("workers.ocr_worker.create_model") as mock_create,
             patch("workers.ocr_worker.ImageLoader.load") as mock_load,
             patch("workers.ocr_worker.SkewCorrector.correct") as mock_skew,
+            # O bronze agora propaga falha: sem este patch o teste tentava
+            # falar com um MinIO real e passava só porque o erro era engolido.
+            patch("workers.ocr_worker.StorageService"),
         ):
             mock_create.return_value = mock_model
             from PIL import Image
@@ -177,3 +180,25 @@ class TestOcrWorker:
             # Modelo deve ter sido carregado via create_model
             assert w._model is mock_model
             mock_model.predict.assert_called_once()
+
+    async def test_save_failure_fails_before_publishing(
+        self, worker, mock_redis, mock_model, ocr_payload
+    ):
+        """MinIO fora do ar: a task falha (retry/DLQ) e nada é publicado. Antes
+        ela era acked com o texto publicado em results mas nunca gravado no
+        bronze — gap permanente e silencioso."""
+        with (
+            patch("workers.ocr_worker.ImageLoader.load") as mock_load,
+            patch("workers.ocr_worker.SkewCorrector.correct") as mock_skew,
+        ):
+            from PIL import Image
+            mock_load.return_value = Image.new("RGB", (10, 10), color="white")
+            mock_skew.return_value = mock_load.return_value
+
+            worker._ensure_storage()
+            worker._storage.save.side_effect = Exception("minio down")
+
+            with pytest.raises(Exception, match="minio down"):
+                await worker.process(ocr_payload)
+
+            mock_redis.xadd.assert_not_awaited()

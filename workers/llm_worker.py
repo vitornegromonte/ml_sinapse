@@ -96,17 +96,19 @@ class LlmWorker(BaseWorker):
 
         result_data = {**data, "text": summary}
 
+        # Bronze before the results notification: save() raises on failure, so
+        # a MinIO outage fails the task (retry → DLQ) instead of publishing a
+        # result that never landed in bronze.
+        self._ensure_storage()
+        self._storage.save(
+            prefix="llm",
+            document_id=doc_id,
+            data=summary.encode("utf-8"),
+        )
+
         self._ensure_publisher()
         if self._result_publisher is not None:
             await self._result_publisher.publish(result_data, summary)
-
-        self._ensure_storage()
-        if self._storage is not None:
-            self._storage.save(
-                prefix="llm",
-                document_id=doc_id,
-                data=summary.encode("utf-8"),
-            )
 
     def run(self) -> None:
         try:

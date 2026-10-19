@@ -141,3 +141,13 @@ class TestLlmWorker:
         result = worker._predict("meu prompt")
         mock_llm.predict.assert_called_once_with("meu prompt")
         assert result == "resumo gerado pelo LLM"
+
+    async def test_save_failure_fails_before_publishing(self, worker, mock_redis, llm_payload):
+        """MinIO fora do ar: a task falha (retry/DLQ) e nada é publicado."""
+        worker._ensure_storage()
+        worker._storage.save.side_effect = Exception("minio down")
+
+        with pytest.raises(Exception, match="minio down"):
+            await worker.process(llm_payload)
+
+        mock_redis.xadd.assert_not_awaited()
