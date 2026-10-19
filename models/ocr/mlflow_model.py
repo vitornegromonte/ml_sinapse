@@ -15,6 +15,11 @@ USER_PROMPT = (
     "Transcreva todas as tabelas caso existam multiplas."
 )
 
+GLM_USER_PROMPT = (
+    "Transcreva todo o texto presente nesta imagem "
+    "com extrema precisão, no idioma português do Brasil."
+)
+
 
 class MlflowOcrModel(AbstractOcrModel):
     def __init__(self, model_uri: str, gpu_device: int = 0):
@@ -50,21 +55,21 @@ class MlflowOcrModel(AbstractOcrModel):
             return "glm"
         return "qwen"
 
-    def predict(self, image: Image.Image, max_tokens: int) -> str:
+    def predict(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
         arch = self._model_architecture()
 
         if arch == "glm":
-            return self._predict_glm(image, max_tokens)
-        return self._predict_qwen(image, max_tokens)
+            return self._predict_glm(image, max_tokens, prompt)
+        return self._predict_qwen(image, max_tokens, prompt)
 
-    def _predict_qwen(self, image: Image.Image, max_tokens: int) -> str:
+    def _predict_qwen(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
         from qwen_vl_utils import process_vision_info
 
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": [
                 {"type": "image", "image": image},
-                {"type": "text", "text": USER_PROMPT},
+                {"type": "text", "text": prompt or USER_PROMPT},
             ]},
         ]
 
@@ -85,14 +90,11 @@ class MlflowOcrModel(AbstractOcrModel):
         ]
         return self._processor.batch_decode(trimmed, skip_special_tokens=True)[0].strip()
 
-    def _predict_glm(self, image: Image.Image, max_tokens: int) -> str:
+    def _predict_glm(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
         messages = [
             {"role": "user", "content": [
                 {"type": "image"},
-                {"type": "text", "text": (
-                    "Transcreva todo o texto presente nesta imagem "
-                    "com extrema precisão, no idioma português do Brasil."
-                )},
+                {"type": "text", "text": prompt or GLM_USER_PROMPT},
             ]}
         ]
         text = self._processor.apply_chat_template(messages, add_generation_prompt=True)

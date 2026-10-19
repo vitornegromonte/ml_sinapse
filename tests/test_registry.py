@@ -1,6 +1,7 @@
 import pytest
 
-from models.ocr.registry import create_model
+from models.ocr.registry import _MODEL_FACTORIES, create_model
+from models.ocr.base import AbstractOcrModel
 from models.ocr.dharma import DharmaOcrModel
 from models.ocr.glm import GlmOcrModel
 from models.ocr.mlflow_model import MlflowOcrModel
@@ -36,6 +37,14 @@ class TestRegistry:
         """Nome de modelo desconhecido deve levantar ValueError."""
         with pytest.raises(ValueError, match="Unknown or unsupported"):
             create_model("some/unknown-model", "/cache", 0)
+
+    def test_every_registered_factory_accepts_create_model_kwargs(self):
+        """create_model chama toda entrada com os mesmos kwargs (sem inspecionar
+        classes) — uma entrada nova com construtor incompatível quebra aqui, não
+        no boot de um worker em produção."""
+        for key in _MODEL_FACTORIES:
+            model = create_model(f"{key}-qualquer", "/cache", 0)
+            assert isinstance(model, AbstractOcrModel)
 
     def test_mlflow_gpu_device_passed(self):
         """MlflowOcrModel deve receber gpu_device."""

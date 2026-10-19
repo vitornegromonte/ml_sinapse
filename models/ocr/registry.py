@@ -1,11 +1,15 @@
+from collections.abc import Callable
+
 from models.ocr.base import AbstractOcrModel
 from models.ocr.dharma import DharmaOcrModel
 from models.ocr.glm import GlmOcrModel
 from models.ocr.mlflow_model import MlflowOcrModel
-from models.ocr.vllm_chat_base import VllmChatOcrModel
 
 
-_MODEL_CLASSES: dict[str, type[AbstractOcrModel]] = {
+# key -> constructor. Every entry is called with the same kwargs below, so this
+# table never inspects classes: an OCR model with a different constructor
+# registers a small lambda instead.
+_MODEL_FACTORIES: dict[str, Callable[..., AbstractOcrModel]] = {
     "qwen": DharmaOcrModel,
     "dharma": DharmaOcrModel,
     "glm": GlmOcrModel,
@@ -24,23 +28,18 @@ def create_model(
     if model_uri:
         return MlflowOcrModel(model_uri, gpu_device=gpu_device)
 
-    for key, cls in _MODEL_CLASSES.items():
+    for key, factory in _MODEL_FACTORIES.items():
         if key in model_name.lower():
-            if issubclass(cls, VllmChatOcrModel):
-                # Every vLLM-chat-backed OCR model shares this constructor
-                # shape — checking the base class (not a specific model)
-                # means a future third one needs no change here.
-                return cls(
-                    model_name=model_name,
-                    cache_dir=cache_dir,
-                    gpu_device=gpu_device,
-                    dtype=dtype,
-                    gpu_memory_utilization=gpu_memory_utilization,
-                    max_model_len=max_model_len,
-                )
-            return cls(model_name=model_name, cache_dir=cache_dir, gpu_device=gpu_device)
+            return factory(
+                model_name=model_name,
+                cache_dir=cache_dir,
+                gpu_device=gpu_device,
+                dtype=dtype,
+                gpu_memory_utilization=gpu_memory_utilization,
+                max_model_len=max_model_len,
+            )
 
-    supported = ", ".join(_MODEL_CLASSES)
+    supported = ", ".join(_MODEL_FACTORIES)
     raise ValueError(
         f"Unknown or unsupported model '{model_name}'. "
         f"Supported architectures: {supported}. "

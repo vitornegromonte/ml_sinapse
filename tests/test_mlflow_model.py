@@ -98,6 +98,42 @@ class TestMlflowOcrModel:
 
             assert isinstance(result, str)
 
+    def test_predict_qwen_prompt_override(self, mock_tensors):
+        """prompt= substitui o USER_PROMPT, como no VllmChatOcrModel — o
+        contrato de AbstractOcrModel.predict não pode divergir por backend
+        (antes, passar prompt aqui era TypeError)."""
+        loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
+
+        with (
+            patch("mlflow.transformers.load_model", return_value=loaded),
+            patch("qwen_vl_utils.process_vision_info") as mock_pvi,
+        ):
+            mock_pvi.return_value = ([Image.new("RGB", (10, 10))], None)
+            model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=0)
+            model.load()
+
+            model.predict(
+                Image.new("RGB", (10, 10)), max_tokens=8, prompt="PROMPT DO CHAMADOR"
+            )
+
+            messages = model._processor.apply_chat_template.call_args[0][0]
+            assert messages[1]["content"][1]["text"] == "PROMPT DO CHAMADOR"
+
+    def test_predict_glm_prompt_override(self, mock_tensors):
+        """Idem para a arquitetura glm."""
+        loaded = _make_mlflow_loaded("ChatGLMModel", mock_tensors)
+
+        with patch("mlflow.transformers.load_model", return_value=loaded):
+            model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=0)
+            model.load()
+
+            model.predict(
+                Image.new("RGB", (10, 10)), max_tokens=8, prompt="PROMPT DO CHAMADOR"
+            )
+
+            messages = model._processor.apply_chat_template.call_args[0][0]
+            assert messages[0]["content"][1]["text"] == "PROMPT DO CHAMADOR"
+
     def test_device_with_gpu(self, mock_tensors):
         """device property deve usar gpu_device configurado."""
         loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
