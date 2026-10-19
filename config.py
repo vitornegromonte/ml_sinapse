@@ -29,7 +29,13 @@ class Settings(BaseSettings):
     # directory — see services/image_loader.py. Empty disables local-path
     # reads: without a root, image_path is an arbitrary-file-read vector.
     ocr_image_allowed_root: str = ""
-    ocr_result_stream_maxlen: int = 1000
+    # Result streams hold OCR/LLM output until the backend consumer drains it.
+    # The cap is a RAM valve for a dead consumer, not a queue size: whatever
+    # overflows it is dropped with no error. At 1000 a 10k-PDF backfill could
+    # trim the oldest results while the consumer lagged. 50k leaves a full
+    # backfill of headroom, and ResultPublisher logs when the cap actually
+    # bites (that log is the real signal — raise the cap or drain the stream).
+    ocr_result_stream_maxlen: int = 50000
     # Safety cap for PDF tasks: a pathological document (or a corrupt/hostile
     # upload) shouldn't monopolize a worker indefinitely. Exceeding this raises
     # in _process_pdf, which feeds the existing retry/DLQ path in base_worker.py
@@ -78,7 +84,7 @@ class Settings(BaseSettings):
     llm_tensor_parallel_size: int = 1
     llm_dtype: str = "auto"
     llm_sampling_params: dict | None = None
-    llm_result_stream_maxlen: int = 1000
+    llm_result_stream_maxlen: int = 50000
     llm_prompt_template: str = (
         "Você é um assistente especializado em analisar documentos policiais.\n"
         "Abaixo está o texto extraído de um documento:\n\n"
