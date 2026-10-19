@@ -27,7 +27,8 @@ async def test_inserts_when_absent():
 
     assert await get_or_create_model_id(db, "m", "v1") == 11
     assert db.execute.await_count == 2
-    assert "ON CONFLICT DO NOTHING" in db.execute.call_args_list[1].args[0]
+    # str(): execute() receives a sqlalchemy TextClause, not a str.
+    assert "ON CONFLICT DO NOTHING" in str(db.execute.call_args_list[1].args[0])
 
 
 async def test_reselects_after_losing_the_race():
