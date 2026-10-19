@@ -48,6 +48,11 @@ from workers.base_worker import BaseWorker
 MODEL_NAME = "bo_linkage_cluster"
 MODEL_VERSION = "v1_componentes_conexos"
 
+# Advisory-lock key for the whole-cluster supersede below ("bo_clust" as hex,
+# arbitrary but fixed). Any other advisory lock in this database must not
+# reuse it.
+CLUSTER_SUPERSEDE_LOCK_KEY = 0x626F5F636C757374
+
 
 class ClusterWorker(BaseWorker):
     def __init__(self, cfg=settings):
@@ -91,6 +96,18 @@ class ClusterWorker(BaseWorker):
 
         async with self.db_session_factory() as db:  # type: AsyncSession
             async with db.begin():
+                # Two cluster jobs running at once would interleave their
+                # batch supersede + insert: whichever commits last decides
+                # which generation is is_current, so the older run can end up
+                # current (and a reader can see two). The transaction-scoped
+                # lock serializes them and releases on commit/rollback;
+                # is_current has no per-row key to supersede on, unlike
+                # bo_embedding/bo_relacionado.
+                await db.execute(
+                    text("SELECT pg_advisory_xact_lock(:key)"),
+                    {"key": CLUSTER_SUPERSEDE_LOCK_KEY},
+                )
+
                 model_id = await get_or_create_model_id(
                     db,
                     MODEL_NAME,
