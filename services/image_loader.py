@@ -7,8 +7,22 @@ from PIL import Image
 
 
 class ImageLoader:
-    def __init__(self, request_timeout: int = 120):
+    """Loads an image from a URL, a base64 blob, or a local path.
+
+    A local path is only read from inside `allowed_root`: the path is resolved
+    (symlinks followed) and must stay under that directory. `image_path` comes
+    from the task payload, so without a confinement root it is an
+    arbitrary-file-read vector — no `allowed_root` means local paths are
+    rejected outright.
+    """
+
+    def __init__(
+        self,
+        request_timeout: int = 120,
+        allowed_root: str | Path | None = None,
+    ):
         self._timeout = request_timeout
+        self._allowed_root = Path(allowed_root).resolve() if allowed_root else None
 
     def load(self, data: dict) -> Image.Image:
         if "image_url" in data:
@@ -32,4 +46,19 @@ class ImageLoader:
         return Image.open(io.BytesIO(decoded))
 
     def _from_path(self, path: str) -> Image.Image:
-        return Image.open(Path(path))
+        return Image.open(self._resolve_local_path(path))
+
+    def _resolve_local_path(self, path: str) -> Path:
+        if self._allowed_root is None:
+            raise ValueError(
+                "image_path is disabled: set ocr_image_allowed_root "
+                "(OCR_IMAGE_ALLOWED_ROOT) to the directory local images may be "
+                "read from"
+            )
+        raw = Path(path)
+        candidate = (raw if raw.is_absolute() else self._allowed_root / raw).resolve()
+        if not candidate.is_relative_to(self._allowed_root):
+            raise ValueError(
+                f"image_path {path!r} escapes the allowed root {self._allowed_root}"
+            )
+        return candidate

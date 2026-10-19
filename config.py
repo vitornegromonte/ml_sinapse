@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     ocr_gpu_device: int = 0
     ocr_max_tokens: int = 2048
     ocr_request_timeout: int = 120  # seconds
+    # Local images (a task's `image_path`) are read only from inside this
+    # directory — see services/image_loader.py. Empty disables local-path
+    # reads: without a root, image_path is an arbitrary-file-read vector.
+    ocr_image_allowed_root: str = ""
     ocr_result_stream_maxlen: int = 1000
     # Safety cap for PDF tasks: a pathological document (or a corrupt/hostile
     # upload) shouldn't monopolize a worker indefinitely. Exceeding this raises
