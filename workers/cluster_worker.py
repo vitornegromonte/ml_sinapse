@@ -36,13 +36,13 @@ leva nova entrar — não há chave lógica por cluster individual pra
 supersede-then-insert par a par como bo_embedding/bo_relacionado.
 """
 import asyncio
-import json
 
 import networkx as nx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
+from services.gold import get_or_create_model_id
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_cluster"
@@ -52,40 +52,6 @@ MODEL_VERSION = "v1_componentes_conexos"
 class ClusterWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.cluster_stream, cfg)
-        self._model_id: int | None = None
-
-    async def _get_or_create_model_id(self, db: AsyncSession) -> int:
-        if self._model_id is not None:
-            return self._model_id
-
-        result = await db.execute(
-            text("SELECT id FROM gold.model_registry WHERE name = :name AND version = :version"),
-            {"name": MODEL_NAME, "version": MODEL_VERSION},
-        )
-        row = result.first()
-        if row is not None:
-            self._model_id = row[0]
-            return self._model_id
-
-        result = await db.execute(
-            text(
-                """
-                INSERT INTO gold.model_registry (name, version, stage, hyperparameters)
-                VALUES (:name, :version, 'production', :hyperparameters)
-                RETURNING id
-                """
-            ),
-            {
-                "name": MODEL_NAME,
-                "version": MODEL_VERSION,
-                "hyperparameters": json.dumps({
-                    "algoritmo": "networkx.connected_components",
-                    "score_threshold": self.cfg.cluster_score_threshold,
-                }),
-            },
-        )
-        self._model_id = result.scalar_one()
-        return self._model_id
 
     async def _carregar_arestas(self, db: AsyncSession) -> list[tuple[int, int]]:
         result = await db.execute(
@@ -125,7 +91,15 @@ class ClusterWorker(BaseWorker):
 
         async with self.db_session_factory() as db:  # type: AsyncSession
             async with db.begin():
-                model_id = await self._get_or_create_model_id(db)
+                model_id = await get_or_create_model_id(
+                    db,
+                    MODEL_NAME,
+                    MODEL_VERSION,
+                    {
+                        "algoritmo": "networkx.connected_components",
+                        "score_threshold": self.cfg.cluster_score_threshold,
+                    },
+                )
 
                 # is_current no nível do CLUSTER INTEIRO — supersede em
                 # lote da leva anterior, não par a par (ver docstring do
