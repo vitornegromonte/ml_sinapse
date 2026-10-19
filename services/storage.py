@@ -33,7 +33,14 @@ class StorageService:
         document_id: str,
         data: bytes,
         content_type: str = "text/plain",
-    ) -> str | None:
+    ) -> str:
+        """Write an object to bronze.
+
+        Raises on failure rather than returning None: the caller notifies the
+        backend about this text, and a swallowed write means the text lives
+        only in Redis — never in bronze — with the task already acked and
+        never retried. Same argument download() makes for reads.
+        """
         path = f"ml-results/{prefix}/{document_id}"
         try:
             self._client.put_object(
@@ -47,7 +54,7 @@ class StorageService:
             return path
         except Exception as exc:
             logger.warning("Failed to save %s to MinIO: %s", path, exc)
-            return None
+            raise
 
     def download(self, bucket: str, key: str) -> bytes:
         """Fetch an arbitrary object by explicit bucket/key (e.g. a source PDF
