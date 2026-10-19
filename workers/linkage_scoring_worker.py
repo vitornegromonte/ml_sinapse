@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models.embedding_model import SentenceTransformerEncoder
+from models.tasks import LinkageTask
 from services.entity_normalization import (
     ENTIDADES_ID,
     normalizar_valor_entidade,
@@ -236,12 +237,8 @@ class LinkageScoringWorker(BaseWorker):
         if self._encoder is None or self._clf is None:
             await asyncio.to_thread(self._load_model)
 
-        id_a = data.get("id_bo_origem")
-        id_b = data.get("id_bo_destino")
-        if not id_a or not id_b:
-            self.logger.warning("Skipping message with missing id_bo_origem/id_bo_destino: %s", data)
-            return
-        id_a, id_b = int(id_a), int(id_b)
+        task = LinkageTask(**data)
+        id_a, id_b = task.id_bo_origem, task.id_bo_destino
         if id_a == id_b:
             self.logger.warning("Skipping self-pair boletim_id=%s", id_a)
             return
@@ -314,7 +311,7 @@ class LinkageScoringWorker(BaseWorker):
                         "score": score,
                         "metricas": json.dumps(metricas),
                         "model_id": model_id,
-                        "pipeline_run_id": data.get("pipeline_run_id"),
+                        "pipeline_run_id": task.pipeline_run_id,
                     },
                 )
 

@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models.embedding_model import SentenceTransformerEncoder
+from models.tasks import EmbeddingTask
 from services.gold import get_or_create_model_id
 from workers.base_worker import BaseWorker
 
@@ -68,14 +69,7 @@ class EmbeddingWorker(BaseWorker):
         return row[0] if row is not None else None
 
     async def process(self, data: dict) -> None:
-        boletim_id = data.get("boletim_id")
-        if not boletim_id:
-            self.logger.warning(
-                "Skipping message with missing boletim_id: %s", data
-            )
-            return
-
-        boletim_id = int(boletim_id)
+        boletim_id = EmbeddingTask(**data).boletim_id
 
         async with self.db_session_factory() as db:  # type: AsyncSession
             text_content = await self._load_narrativa(db, boletim_id)

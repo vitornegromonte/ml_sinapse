@@ -4,6 +4,7 @@ import spacy
 from spacy import Language
 
 from config import settings
+from models.tasks import NerTask
 from services.model_sync import sync_if_missing
 from workers.base_worker import BaseWorker
 
@@ -42,7 +43,7 @@ class NerWorker(BaseWorker):
         if self._nlp is None:
             await asyncio.to_thread(self._load_model)
 
-        text = data["text"]
+        task = NerTask(**data)
 
         def run_ner(text: str) -> list[dict]:
             doc = self._nlp(text)
@@ -56,11 +57,11 @@ class NerWorker(BaseWorker):
                 for ent in doc.ents
             ]
 
-        entities = await asyncio.to_thread(run_ner, text)
+        entities = await asyncio.to_thread(run_ner, task.text)
 
         self.logger.info(
             "NER result: document_id=%s entity_count=%d entities=%s",
-            data.get("document_id", "?"),
+            task.document_id,
             len(entities),
             entities,
         )
