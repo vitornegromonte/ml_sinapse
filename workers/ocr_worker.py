@@ -21,7 +21,10 @@ class OcrWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.ocr_stream, cfg)
         self._model: AbstractOcrModel | None = None
-        self._image_loader = ImageLoader(request_timeout=cfg.ocr_request_timeout)
+        self._image_loader = ImageLoader(
+            request_timeout=cfg.ocr_request_timeout,
+            allowed_root=cfg.ocr_image_allowed_root or None,
+        )
         self._skew_corrector = SkewCorrector()
         self._pdf_extractor = PdfExtractor()
         self._result_publisher: ResultPublisher | None = None

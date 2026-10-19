@@ -33,6 +33,9 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MODEL_BASE_PATH=/model-cache
+      # Confines a task's image_path to the mounted fixtures dir (see
+      # services/image_loader.py) — local paths outside it are refused.
+      - OCR_IMAGE_ALLOWED_ROOT=/fixtures/images
       # Best of 8 models on Portuguese MDPBench — see docs/adr-004-multimodal-ocr.md.
       - OCR_MODEL_NAME=zai-org/GLM-OCR
       # Model loading runs inside asyncio.to_thread (see ocr_worker.py), so
