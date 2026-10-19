@@ -25,7 +25,7 @@ CHECK id_bo_origem < id_bo_destino) e faz supersede-then-insert por par, uma
 mensagem duplicada só recalcula o mesmo score de novo, sem duplicar linha.
 
 Uso:
-    python scripts/backfill_linkage_scores.py [--top-k 20] [--dry-run] [--limit N]
+    python scripts/backfill_linkage_scores.py [--top-k 20] [--max-group-size 100] [--dry-run] [--limit N]
 
 Requer:
     ML_DATABASE_URL     — leitura de gold.bo_embedding / gold.bo_entidades
@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings  # noqa: E402
 from services.database import create_db_engine, create_session_factory  # noqa: E402
+from services.linkage_candidates import pares_por_grupo  # noqa: E402
 from services.task_publisher import enqueue, wait_for_capacity  # noqa: E402
 from sqlalchemy import text as sql_text  # noqa: E402
 
@@ -52,6 +53,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(me
 logger = logging.getLogger("backfill_linkage_scores")
 
 TOP_K_DEFAULT = 20
+
+# A value shared by more BOs than this is a generic label, not an identifier —
+# expanding it is the O(k²) blow-up this cap exists to stop. See
+# services/linkage_candidates.py.
+MAX_GROUP_SIZE_DEFAULT = 100
 
 # Mesma lista de motor_linkage.py / linkage_scoring_worker.py — não editar
 # sem editar as duas em conjunto.
@@ -114,7 +120,7 @@ async def _candidatos_por_embedding(db, top_k: int, limit: int | None) -> set[tu
     return pares
 
 
-async def _candidatos_por_entidade_forte(db) -> set[tuple[int, int]]:
+async def _candidatos_por_entidade_forte(db, max_group_size: int) -> set[tuple[int, int]]:
     labels = ", ".join(f"'{l}'" for l in ENTIDADES_ID)
     query = sql_text(
         f"""
@@ -133,18 +139,18 @@ async def _candidatos_por_entidade_forte(db) -> set[tuple[int, int]]:
             continue
         grupos.setdefault((label, valor), set()).add(boletim_id)
 
-    pares = set()
-    for (_, _), bo_ids in grupos.items():
-        if len(bo_ids) < 2:
-            continue
-        ordenados = sorted(bo_ids)
-        for i in range(len(ordenados)):
-            for j in range(i + 1, len(ordenados)):
-                pares.add((ordenados[i], ordenados[j]))
+    pares, grupos_pulados = pares_por_grupo(grupos, max_group_size)
+    if grupos_pulados:
+        logger.warning(
+            "  %d valor(es) genérico(s) ignorado(s): mais de %d BOs no mesmo "
+            "valor, expandir seria O(k²).",
+            grupos_pulados,
+            max_group_size,
+        )
     return pares
 
 
-async def backfill(top_k: int, limit: int | None, dry_run: bool) -> None:
+async def backfill(top_k: int, limit: int | None, max_group_size: int, dry_run: bool) -> None:
     engine = create_db_engine()
     session_factory = create_session_factory(engine)
     async with session_factory() as db:
@@ -153,7 +159,7 @@ async def backfill(top_k: int, limit: int | None, dry_run: bool) -> None:
         logger.info("  %d pares via embedding", len(pares_embedding))
 
         logger.info("Buscando candidatos por entidade forte...")
-        pares_entidade = await _candidatos_por_entidade_forte(db)
+        pares_entidade = await _candidatos_por_entidade_forte(db, max_group_size)
         logger.info("  %d pares via entidade forte", len(pares_entidade))
 
     pares = pares_embedding | pares_entidade
@@ -194,10 +200,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--top-k", type=int, default=TOP_K_DEFAULT)
     parser.add_argument("--limit", type=int, default=None, help="Limita a N BOs de origem (só afeta o gerador por embedding)")
+    parser.add_argument(
+        "--max-group-size",
+        type=int,
+        default=MAX_GROUP_SIZE_DEFAULT,
+        help="Ignora valores de entidade compartilhados por mais de N BOs (genéricos: viram O(k²) pares)",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    asyncio.run(backfill(args.top_k, args.limit, args.dry_run))
+    asyncio.run(backfill(args.top_k, args.limit, args.max_group_size, args.dry_run))
 
 
 if __name__ == "__main__":
