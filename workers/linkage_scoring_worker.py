@@ -8,8 +8,9 @@ sem estado, montando o "perfil" de cada BO sob demanda a partir do que já
 está em Postgres (gold.bo_embedding, gold.bo_entidades, silver.boletim) em
 vez de manter tudo carregado num objeto Python.
 
-SCHEMA_ENTIDADES/ENTIDADES_ID/etc. abaixo têm que ficar idênticos ao motor
-original — definem o espaço de features que o classificador
+SCHEMA_ENTIDADES abaixo (e ENTIDADES_ID/regras de normalização, agora em
+services/entity_normalization.py) têm que ficar idênticos ao motor original —
+definem o espaço de features que o classificador
 (artifacts/bo_linkage_classifier_v1.joblib) foi treinado sobre. Reordenar ou
 renomear um tipo muda o layout do vetor de perfil_tipos() e invalida
 silenciosamente todo score que o classificador produzir.
@@ -24,8 +25,6 @@ motor original (que usa frozenset({id_a, id_b}), sem ordem imposta), o
 schema exige o par normalizado antes do INSERT.
 """
 import asyncio
-import re
-import unicodedata
 
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -34,6 +33,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models.embedding_model import SentenceTransformerEncoder
+from services.entity_normalization import (
+    ENTIDADES_ID,
+    normalizar_valor_entidade,
+)
 from services.gold import get_or_create_model_id
 from workers.base_worker import BaseWorker
 
@@ -58,42 +61,8 @@ SCHEMA_ENTIDADES = [
 N_ENT_TIPOS = len(SCHEMA_ENTIDADES)
 ENT2IDX = {e: i for i, e in enumerate(SCHEMA_ENTIDADES)}
 
-ENTIDADES_ID = {
-    "PESSOA_NOME", "DOCUMENTO", "PLACA", "BO_ID",
-    "EMAIL", "TELEFONE", "INSTAGRAM", "URL",
-    "CONTA_BANCARIA", "CHAVE_PIX", "OBJETO_VEICULO",
-}
 TIPOS_LOCAL_EXATO = {"LOCAL_AREA", "LOCAL_ESTABELECIMENTO", "LOCAL_COMODO"}
 TIPOS_DESCRITIVOS_PADRAO = {"PESSOA_DESCRICAO", "OBJETO_GERAL", "OBJETO_ARMA", "OBJETO_VEICULO"}
-
-_TIPOS_PESSOA = {"PESSOA_NOME"}
-_TIPOS_IDENTIFICADOR_DURO = {
-    "DOCUMENTO", "PLACA", "BO_ID", "TELEFONE",
-    "CONTA_BANCARIA", "AGENCIA_BANCARIA", "CHAVE_PIX",
-}
-
-
-def _normalizar_nome(nome: str) -> str:
-    nome = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
-    return " ".join(nome.upper().split())
-
-
-def _normalizar_valor_entidade(texto: str, tipo: str) -> str:
-    t = tipo.upper()
-    if t in _TIPOS_PESSOA:
-        return _normalizar_nome(texto)
-    if t == "EMAIL":
-        return texto.strip().lower()
-    if t == "URL":
-        return texto.strip().lower().rstrip("/")
-    if t == "INSTAGRAM":
-        return texto.strip().lower().lstrip("@")
-    if t in _TIPOS_IDENTIFICADOR_DURO:
-        return re.sub(r"[^A-Z0-9]", "", texto.upper())
-    txt = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
-    txt = re.sub(r"[^\w\s]", " ", txt.lower())
-    return " ".join(txt.split())
-
 
 def _perfil_tipos_vetor(entidades_por_tipo: dict) -> np.ndarray:
     v = np.zeros(N_ENT_TIPOS)
@@ -178,7 +147,7 @@ class LinkageScoringWorker(BaseWorker):
             if tipo not in ENT2IDX:
                 continue
             texto_original = ent.get("text", "")
-            valor = _normalizar_valor_entidade(texto_original, tipo)
+            valor = normalizar_valor_entidade(texto_original, tipo)
             if valor:
                 entidades_por_tipo.setdefault(tipo, set()).add(valor)
             if tipo in TIPOS_DESCRITIVOS_PADRAO:

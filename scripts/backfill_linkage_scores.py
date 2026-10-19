@@ -16,9 +16,10 @@ enfileirar:
 
 Sem isso, comparar todos os pares seria O(n²) — ~55M pares pros 10.518 BOs
 de hoje, inviável rodar scoring completo (7 features + classificador) em
-cada um. Normalização de entidade acontece em Python (mesma lógica de
-motor_linkage.py/linkage_scoring_worker.py) — Postgres não tem a extensão
-unaccent instalada, replicar a normalização em SQL puro seria frágil.
+cada um. Normalização de entidade usa os rótulos/tipos de
+services/entity_normalization.py (mesma lógica de motor_linkage.py) — Postgres
+não tem a extensão unaccent instalada, replicar a normalização em SQL puro
+seria frágil.
 
 Idempotente: LinkageScoringWorker normaliza o par (menor id = origem, ver
 CHECK id_bo_origem < id_bo_destino) e faz supersede-then-insert por par, uma
@@ -34,9 +35,7 @@ Requer:
 import argparse
 import asyncio
 import logging
-import re
 import sys
-import unicodedata
 from pathlib import Path
 
 from tqdm import tqdm
@@ -45,6 +44,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings  # noqa: E402
 from services.database import create_db_engine, create_session_factory  # noqa: E402
+from services.entity_normalization import (  # noqa: E402
+    ENTIDADES_ID,
+    normalizar_valor_entidade,
+)
 from services.linkage_candidates import pares_por_grupo  # noqa: E402
 from services.task_publisher import enqueue, wait_for_capacity  # noqa: E402
 from sqlalchemy import text as sql_text  # noqa: E402
@@ -58,41 +61,6 @@ TOP_K_DEFAULT = 20
 # expanding it is the O(k²) blow-up this cap exists to stop. See
 # services/linkage_candidates.py.
 MAX_GROUP_SIZE_DEFAULT = 100
-
-# Mesma lista de motor_linkage.py / linkage_scoring_worker.py — não editar
-# sem editar as duas em conjunto.
-ENTIDADES_ID = {
-    "PESSOA_NOME", "DOCUMENTO", "PLACA", "BO_ID",
-    "EMAIL", "TELEFONE", "INSTAGRAM", "URL",
-    "CONTA_BANCARIA", "CHAVE_PIX", "OBJETO_VEICULO",
-}
-_TIPOS_PESSOA = {"PESSOA_NOME"}
-_TIPOS_IDENTIFICADOR_DURO = {
-    "DOCUMENTO", "PLACA", "BO_ID", "TELEFONE",
-    "CONTA_BANCARIA", "AGENCIA_BANCARIA", "CHAVE_PIX",
-}
-
-
-def _normalizar_nome(nome: str) -> str:
-    nome = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
-    return " ".join(nome.upper().split())
-
-
-def _normalizar_valor_entidade(texto: str, tipo: str) -> str:
-    t = tipo.upper()
-    if t in _TIPOS_PESSOA:
-        return _normalizar_nome(texto)
-    if t == "EMAIL":
-        return texto.strip().lower()
-    if t == "URL":
-        return texto.strip().lower().rstrip("/")
-    if t == "INSTAGRAM":
-        return texto.strip().lower().lstrip("@")
-    if t in _TIPOS_IDENTIFICADOR_DURO:
-        return re.sub(r"[^A-Z0-9]", "", texto.upper())
-    txt = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
-    txt = re.sub(r"[^\w\s]", " ", txt.lower())
-    return " ".join(txt.split())
 
 
 async def _candidatos_por_embedding(db, top_k: int, limit: int | None) -> set[tuple[int, int]]:
@@ -134,7 +102,7 @@ async def _candidatos_por_entidade_forte(db, max_group_size: int) -> set[tuple[i
     # {(label, valor_normalizado): {boletim_id, ...}}
     grupos: dict[tuple[str, str], set[int]] = {}
     for boletim_id, label, texto in result.fetchall():
-        valor = _normalizar_valor_entidade(texto, label)
+        valor = normalizar_valor_entidade(texto, label)
         if not valor:
             continue
         grupos.setdefault((label, valor), set()).add(boletim_id)
