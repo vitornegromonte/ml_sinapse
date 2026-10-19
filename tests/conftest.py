@@ -8,6 +8,9 @@ from PIL import Image
 def mock_redis():
     redis = AsyncMock()
     redis.xadd = AsyncMock()
+    # ResultPublisher reads XLEN after each publish to notice a stream sitting
+    # at its cap; a bare AsyncMock isn't orderable against an int.
+    redis.xlen = AsyncMock(return_value=0)
     return redis
 
 
