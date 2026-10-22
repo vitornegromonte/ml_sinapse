@@ -55,9 +55,13 @@ runs (model load happens in a non-main thread).
 ## Develop / test
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -r requirements-dev.txt -r requirements-test.txt  # CPU-only: no GPU/CUDA/vLLM
 python -m pytest -q          # mock-based, no GPU/DB/Redis needed
 ```
+
+`requirements-test.txt` is the CPU-only subset used by CI
+(`.github/workflows/tests.yml`); `requirements.txt` is only needed to actually
+run a worker.
 
 Pipeline drivers in `scripts/` (run from repo root):
 
