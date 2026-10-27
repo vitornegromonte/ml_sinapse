@@ -54,3 +54,34 @@ async def test_supersede_takes_advisory_lock_before_touching_clusters():
         i for i, (sql, _) in enumerate(statements) if "UPDATE gold.clusters" in sql
     )
     assert update_at > 0  # lock first, batch supersede after
+
+
+def test_montar_componentes_agrupa_sem_montar_grafo():
+    worker = ClusterWorker()
+
+    assert worker._montar_componentes([(1, 2), (2, 3), (7, 8), (1, 2)]) == [[1, 2, 3], [7, 8]]
+
+
+def test_montar_componentes_inclui_autolaco_e_ignora_no_sem_aresta():
+    worker = ClusterWorker()
+
+    # Mesmo resultado do nx.Graph anterior: 9 é nó (autolago), 4 não é.
+    assert worker._montar_componentes([(1, 2), (9, 9)]) == [[1, 2], [9]]
+
+
+async def test_membros_sao_inseridos_em_lote_por_cluster():
+    worker = ClusterWorker()
+    statements = []
+    worker.db_session_factory = lambda: _FakeSession(statements)
+    worker._carregar_arestas = AsyncMock(return_value=[(1, 2), (3, 4)])
+    worker._montar_componentes = MagicMock(return_value=[[1, 2], [3]])
+
+    await worker.process({})
+
+    insercoes = [
+        params for sql, params in statements if "INSERT INTO gold.bo_cluster" in sql
+    ]
+    assert insercoes == [
+        [{"cluster_id": 42, "boletim_id": 1}, {"cluster_id": 42, "boletim_id": 2}],
+        [{"cluster_id": 42, "boletim_id": 3}],
+    ]
