@@ -69,3 +69,19 @@ class TestStorageService:
         storage.save("ocr", "doc-roundtrip", TEXT.encode())
         result = storage.load("ocr", "doc-roundtrip")
         assert result == TEXT
+
+
+class TestBuildMinioClient:
+    def test_https_endpoint_is_stripped(self):
+        """B17: storage.py stripped only http://, so an https:// endpoint
+        survived into the client and every request URL was mangled."""
+        with patch("services.storage.Minio") as minio_cls:
+            StorageService(
+                endpoint="https://minio:9000",
+                access_key="a",
+                secret_key="b",
+                bucket="bronze",
+            )
+
+        assert minio_cls.call_args.args[0] == "minio:9000"
+        assert minio_cls.call_args.kwargs["secure"] is False
