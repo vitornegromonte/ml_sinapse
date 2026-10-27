@@ -144,7 +144,11 @@ async def backfill(top_k: int, limit: int | None, max_group_size: int, dry_run: 
         return
 
     enfileirados = 0
-    for id_a, id_b in tqdm(pares, desc="Enfileirando", unit="par"):
+    # Ordenado por id_bo_origem: o worker de linkage cacheia o perfil de cada BO
+    # (workers/linkage_scoring_worker.py) e pares vizinhos reusam o mesmo BO. Sem
+    # isso a ordem é a de hash do set: um cache menor que o corpus perderia a
+    # localidade e trocaria um re-encode por par.
+    for id_a, id_b in tqdm(sorted(pares), desc="Enfileirando", unit="par"):
         if enfileirados % 500 == 0:
             # Don't outrun the worker: the task stream is never trimmed, so
             # without this the whole backlog would sit in Redis RAM.
