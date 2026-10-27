@@ -25,6 +25,7 @@ motor original (que usa frozenset({id_a, id_b}), sem ordem imposta), o
 schema exige o par normalizado antes do INSERT.
 """
 import asyncio
+from collections import OrderedDict
 
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -74,11 +75,24 @@ def _perfil_tipos_vetor(entidades_por_tipo: dict) -> np.ndarray:
     return v / norma if norma > 0 else v
 
 
+def _cos(a: np.ndarray, b: np.ndarray) -> float:
+    """Cosine sem o overhead do sklearn: é uma chamada por par (490k no
+    backfill). Não dá pra trocar por np.dot puro — encode() do
+    sentence-transformers NÃO normaliza por padrão, então assumir norma 1
+    mudaria o score em silêncio."""
+    norma_a, norma_b = float(np.linalg.norm(a)), float(np.linalg.norm(b))
+    if not norma_a or not norma_b:
+        return 0.0
+    return float(np.dot(a, b)) / (norma_a * norma_b)
+
+
 class LinkageScoringWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.linkage_stream, cfg)
         self._encoder: SentenceTransformerEncoder | None = None
         self._clf = None
+        # LRU por boletim_id — o worker é um processo só, então um dict basta.
+        self._perfis: OrderedDict[int, dict] = OrderedDict()
 
     def _load_model(self) -> None:
         import joblib
@@ -107,7 +121,9 @@ class LinkageScoringWorker(BaseWorker):
     async def _load_perfil(self, db: AsyncSession, boletim_id: int) -> dict | None:
         """Monta o que score_par precisa de um BO a partir do que já está
         persistido — equivalente ao que self.emb_texto[i]/self.entidades_por_bo
-        etc. dão no motor original, só que buscado sob demanda."""
+        etc. dão no motor original, só que buscado sob demanda.
+
+        Só SQL: quem chama encoda as descrições depois de fechar a sessão."""
         result = await db.execute(
             text(
                 """
@@ -154,20 +170,40 @@ class LinkageScoringWorker(BaseWorker):
             if tipo in TIPOS_DESCRITIVOS_PADRAO:
                 descricoes.append((tipo, texto_original))
 
-        emb_descricoes = None
-        if descricoes:
-            textos = [t for _, t in descricoes]
-            emb_descricoes = await asyncio.to_thread(self._encoder.encode, textos)
-
         return {
             "boletim_id": boletim_id,
             "embedding": embedding,
             "entidades_por_tipo": entidades_por_tipo,
             "descricoes": descricoes,
-            "emb_descricoes": emb_descricoes,
+            "emb_descricoes": None,
             "natureza": natureza,
             "data_fato": horario_ocorrencia,
         }
+
+    async def _perfil(self, boletim_id: int) -> dict | None:
+        """Perfil de um BO, cacheado: 490k pares reusam ~50k BOs e o encode das
+        descrições é o custo de GPU dominante do pipeline. O encode roda com a
+        sessão já fechada — não prende conexão do pool durante trabalho de GPU."""
+        perfil = self._perfis.get(boletim_id)
+        if perfil is not None:
+            self._perfis.move_to_end(boletim_id)
+            return perfil
+
+        async with self.db_session_factory() as db:  # type: AsyncSession
+            perfil = await self._load_perfil(db, boletim_id)
+        if perfil is None:
+            return None
+
+        if perfil["descricoes"]:
+            textos = [t for _, t in perfil["descricoes"]]
+            perfil["emb_descricoes"] = await asyncio.to_thread(
+                self._encoder.encode, textos
+            )
+
+        self._perfis[boletim_id] = perfil
+        if len(self._perfis) > self.cfg.linkage_profile_cache_max:
+            self._perfis.popitem(last=False)
+        return perfil
 
     def _overlap_por_tipo(self, a: dict, b: dict, tipos: set) -> dict:
         overlaps = {}
@@ -189,7 +225,7 @@ class LinkageScoringWorker(BaseWorker):
         return melhor, par_textos
 
     def _componentes(self, a: dict, b: dict) -> dict:
-        sim_texto = float(cosine_similarity(a["embedding"][None, :], b["embedding"][None, :])[0, 0])
+        sim_texto = _cos(a["embedding"], b["embedding"])
 
         # sim_geo sempre 0.0 — ver docstring do módulo (sem geocoding ainda).
         sim_geo_bruta = 0.0
@@ -246,9 +282,8 @@ class LinkageScoringWorker(BaseWorker):
         if id_a > id_b:
             id_a, id_b = id_b, id_a
 
-        async with self.db_session_factory() as db:  # type: AsyncSession
-            perfil_a = await self._load_perfil(db, id_a)
-            perfil_b = await self._load_perfil(db, id_b)
+        perfil_a = await self._perfil(id_a)
+        perfil_b = await self._perfil(id_b)
 
         if perfil_a is None or perfil_b is None:
             self.logger.warning(
