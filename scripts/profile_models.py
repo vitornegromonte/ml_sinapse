@@ -54,7 +54,7 @@ def _carregar(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: 
         from models.llm_model import LLMModel
 
         if not settings.llm_model_path:
-            raise SystemExit("LLM_MODEL_PATH não definido — exporte ou passe --model-name")
+            raise SystemExit("LLM_MODEL_PATH vazio — exporte o id do modelo (o compose já passa)")
         modelo = LLMModel(
             model_path=settings.llm_model_path,
             device=f"cuda:{gpu}",
