@@ -52,6 +52,22 @@ GPU note: `ocr`/`llm`/`embedding`/`linkage` reserve 1 GPU; `ner`/`cluster`
 are CPU-only. `VLLM_WORKER_MULTIPROC_METHOD=spawn` is required where vLLM
 runs (model load happens in a non-main thread).
 
+Com **2 GPUs** (medido numa máquina de 2×95 GiB com `scripts/profile_models.py`
+e `scripts/test_ocr_llm.py`), o roteamento que cabe é:
+
+| GPU | workers | VRAM |
+|---|---|---|
+| 0 | `ocr` + `embedding` + `linkage` | ~27 GB com `OCR_GPU_MEMORY_UTILIZATION=0.25` |
+| 1 | `llm` | ~28 GB com `LLM_GPU_MEMORY_UTILIZATION=0.27` |
+
+O `util` do vLLM é um **teto**, não o tamanho do modelo: ele carrega os pesos
+e preenche o resto com cache KV, que é o que dimensiona a concorrência. O piso
+é `(pesos + ativação + max_model_len × bytes_por_token) / placa` — para o `llm`
+(pesos 15,5 GiB, 36,7 KiB/token, contexto nativo de 131 072) isso dá 0,27;
+abaixo disso o vLLM recusa iniciar, a menos que `LLM_MAX_MODEL_LEN` seja
+reduzido. Para o `ocr` (pesos 2,2 GiB, 64 KiB/token) o piso é 0,13. Carregue
+os workers de tamanho fixo antes dos de vLLM quando dividirem uma placa.
+
 ## Develop / test
 
 ```bash
