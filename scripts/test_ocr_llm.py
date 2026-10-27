@@ -79,12 +79,13 @@ async def main():
         sys.exit(1)
 
     base_ocr, total_ocr = _vram(0)  # a primeira chamada cria o contexto: base ≈ contexto
-    print(f"Carregando modelo OCR ({settings.ocr_model_name}, util {settings.ocr_gpu_memory_utilization})...")
+    print(f"Carregando modelo OCR ({settings.ocr_model_name}, util {settings.ocr_gpu_memory_utilization}, max_len {settings.ocr_max_model_len or 'do modelo'})...")
     ocr = create_model(
         model_name=settings.ocr_model_name,
         cache_dir="/tmp/models",
         gpu_device=0,
         gpu_memory_utilization=settings.ocr_gpu_memory_utilization,
+        max_model_len=settings.ocr_max_model_len,
     )
     ocr.load()
     print(f"  GPU 0: +{_vram(0)[0] - base_ocr} MB de modelo (contexto: {base_ocr} MB)")
@@ -99,12 +100,15 @@ async def main():
 
     base_llm, total_llm = _vram(1)
     llm_path = settings.llm_model_path or "google/gemma-4-E4B-it"
-    print(f"Carregando modelo LLM ({llm_path}, util {settings.llm_gpu_memory_utilization}, max_len 32768)...")
+    print(
+        f"Carregando modelo LLM ({llm_path}, util {settings.llm_gpu_memory_utilization}, "
+        f"max_len {settings.llm_max_model_len or 'do modelo'})..."
+    )
     llm = LLMModel(
         model_path=llm_path,
         device="cuda:1",
         gpu_memory_utilization=settings.llm_gpu_memory_utilization,
-        max_model_len=32768,
+        max_model_len=settings.llm_max_model_len,
         sampling_params={"max_tokens": 1024, "temperature": 0.3},
     )
     llm.load()
