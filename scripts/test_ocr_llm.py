@@ -5,6 +5,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from models.ocr import create_model
 from models.llm_model import LLMModel
 from services.pdf_extractor import PdfExtractor
