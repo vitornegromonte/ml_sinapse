@@ -9,11 +9,16 @@ vLLM's --task embed) can be added if and when one is actually validated here.
 CRITICAL: the classifier was calibrated against
 sentence-transformers.SentenceTransformer("neuralmind/bert-base-portuguese-
 cased").encode(...) specifically — that library's own pooling (mean pooling
-over token embeddings, L2-normalized) is part of what "the embedding space"
-means here. A different pooling strategy over the same base model produces a
-numerically different space and silently invalidates score_par's sim_texto
-component — no error, just quietly wrong scores. Do not swap encoders
-without re-validating (or retraining) the classifier against the new space.
+over token embeddings) is part of what "the embedding space" means here. A
+different pooling strategy over the same base model produces a numerically
+different space and silently invalidates score_par's sim_texto component — no
+error, just quietly wrong scores. Do not swap encoders without re-validating
+(or retraining) the classifier against the new space.
+
+Nor are the vectors guaranteed to be unit-length: encode() runs with its
+default normalize_embeddings=False, so a cosine has to be computed (see
+workers/linkage_scoring_worker.py::_cos) — a bare dot product is not the same
+number.
 """
 from __future__ import annotations
 
