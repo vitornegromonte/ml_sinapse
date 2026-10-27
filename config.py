@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     linkage_gpu_device: int = 0
     linkage_tau_dias: float = 30.0
     linkage_limiar_descricao: float = 0.6
+    # Perfis de BO mantidos em memória no worker de linkage (embedding + vetores
+    # das descrições, ~15-40 KB por BO). 490k pares reusam ~50k BOs; sem cache
+    # cada BO é re-encodado na GPU ~20x. Uma entrada evictada só custa um
+    # re-encode — nunca um score diferente. Ver workers/linkage_scoring_worker.py.
+    linkage_profile_cache_max: int = 50_000
 
     # "Parâmetros calibrados nesta versão" do README do Maynara_cluster_v0 —
     # não o default 0.5 do código-fonte de clusters_por_natureza() (os dois
