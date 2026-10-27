@@ -1,5 +1,10 @@
 """O conselho de roteamento do profiler: é aritmética que decide a config do
 compose, então vale um teste — o resto do script precisa de GPU."""
+from types import SimpleNamespace
+
+import pytest
+
+from scripts import profile_models
 from scripts.profile_models import _resumo, _tabela
 
 
@@ -47,3 +52,31 @@ def test_tabela_marca_os_fixos_sem_util_e_mostra_mb():
     assert linhas[1].rstrip().endswith("-")  # util não se aplica a modelo fixo
     assert "0.90" in linhas[2]
     assert tabela.endswith("(MB)\n")
+
+
+def test_rodar_um_pina_o_filho_na_gpu_pedida(monkeypatch):
+    chamada = {}
+
+    def falso(comando, **kwargs):
+        chamada["env"] = kwargs["env"]
+        return SimpleNamespace(stdout='__PERFIL__{"modelo": "ocr", "gpu": 1}', stderr="")
+
+    monkeypatch.setattr(profile_models.subprocess, "run", falso)
+
+    linha = profile_models._rodar_um("ocr", 1, 0.9, None, "/tmp/models")
+
+    # Foi este detalhe que fez o primeiro run medir 0 MB: sem pinar o
+    # processo, o GLM-OCR carrega na GPU 0 e a medição na 1 não vê nada.
+    assert chamada["env"]["CUDA_VISIBLE_DEVICES"] == "1"
+    assert linha["gpu"] == 1
+
+
+def test_rodar_um_mostra_o_erro_do_filho(monkeypatch):
+    monkeypatch.setattr(
+        profile_models.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(stdout="", stderr="Traceback\nCUDA out of memory"),
+    )
+
+    with pytest.raises(SystemExit, match="CUDA out of memory"):
+        profile_models._rodar_um("llm", 0, 0.9, None, "/tmp/models")

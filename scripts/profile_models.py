@@ -11,6 +11,9 @@ Cada modelo é medido em um processo próprio (`--all` reexecuta este script),
 porque cada worker tem o próprio contexto CUDA (~0.3-0.6 GB) e porque o vLLM
 não devolve a VRAM de forma confiável dentro do mesmo processo.
 
+`--gpu` é aplicado pinando o filho com CUDA_VISIBLE_DEVICES, não passando o
+índice ao modelo: o vLLM escolhe a placa só pela variável de ambiente.
+
 `ocr` e `llm` rodam em vLLM: eles NÃO têm um tamanho intrínseco — reservam
 `*_GPU_MEMORY_UTILIZATION` da placa na carga. O número medido é o custo do
 `--util` usado; repita com o valor que pretende rodar. Como dividir uma GPU:
@@ -22,6 +25,7 @@ não tem como adivinhar.
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -57,7 +61,10 @@ def _carregar(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: 
             raise SystemExit("LLM_MODEL_PATH vazio — exporte o id do modelo (o compose já passa)")
         modelo = LLMModel(
             model_path=settings.llm_model_path,
-            device=f"cuda:{gpu}",
+            # "auto" = a única placa visível. Passar "cuda:0" faria o LLMModel
+            # reescrever CUDA_VISIBLE_DEVICES e os subprocessos do vLLM
+            # herdariam 0 (a placa física errada).
+            device="auto",
             gpu_memory_utilization=util,
             max_model_len=max_len,
             sampling_params={"max_tokens": 32},
@@ -88,23 +95,28 @@ def _usar(nome: str, modelo) -> None:
 def _medir(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: str) -> dict:
     import torch
 
-    torch.zeros(1, device=f"cuda:{gpu}")  # força o contexto CUDA antes da baseline
-    torch.cuda.synchronize(gpu)
-    livre_antes, total = torch.cuda.mem_get_info(gpu)
+    # O processo já foi pinado por CUDA_VISIBLE_DEVICES, então a única placa
+    # visível é a 0. Não adianta passar `--gpu` ao modelo: o vLLM ignora
+    # device no construtor e usa a variável de ambiente.
+    visivel = 0
+
+    torch.zeros(1, device=f"cuda:{visivel}")  # força o contexto CUDA antes da baseline
+    torch.cuda.synchronize(visivel)
+    livre_antes, total = torch.cuda.mem_get_info(visivel)
     usado_antes = total - livre_antes
-    torch.cuda.reset_peak_memory_stats(gpu)
+    torch.cuda.reset_peak_memory_stats(visivel)
 
     inicio = time.perf_counter()
-    modelo = _carregar(nome, gpu, util, max_len, cache_dir)
-    torch.cuda.synchronize(gpu)
+    modelo = _carregar(nome, visivel, util, max_len, cache_dir)
+    torch.cuda.synchronize(visivel)
     segundos_carga = time.perf_counter() - inicio
-    livre_carregado, _ = torch.cuda.mem_get_info(gpu)
+    livre_carregado, _ = torch.cuda.mem_get_info(visivel)
 
     inicio = time.perf_counter()
     _usar(nome, modelo)
-    torch.cuda.synchronize(gpu)
+    torch.cuda.synchronize(visivel)
     segundos_inferencia = time.perf_counter() - inicio
-    livre_final, _ = torch.cuda.mem_get_info(gpu)
+    livre_final, _ = torch.cuda.mem_get_info(visivel)
 
     mb = lambda bytes_: int(bytes_ // 2**20)  # noqa: E731
     return {
@@ -114,7 +126,7 @@ def _medir(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: str
         "contexto_mb": mb(usado_antes),
         "modelo_mb": mb(total - livre_carregado - usado_antes),
         "pico_mb": mb(total - livre_final - usado_antes),
-        "torch_reservado_pico_mb": mb(torch.cuda.max_memory_reserved(gpu)),
+        "torch_reservado_pico_mb": mb(torch.cuda.max_memory_reserved(visivel)),
         # util só significa algo para vLLM; nos fixos o tamanho é o tamanho.
         "util": None if nome in FIXOS else util,
         "carga_s": round(segundos_carga, 1),
@@ -175,7 +187,10 @@ def _rodar_um(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: 
     ]
     if max_len:
         comando += ["--max-len", str(max_len)]
-    saida = subprocess.run(comando, capture_output=True, text=True)
+    # Pinar aqui, e não dentro do modelo: o vLLM escolhe a placa por
+    # CUDA_VISIBLE_DEVICES, e GlmOcrModel não pina nada.
+    ambiente = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu)}
+    saida = subprocess.run(comando, capture_output=True, text=True, env=ambiente)
     for linha in saida.stdout.splitlines():
         if linha.startswith(MARCADOR):
             return json.loads(linha[len(MARCADOR):])
@@ -224,6 +239,13 @@ def main() -> None:
     elif linhas:
         print(_tabela(linhas))
         print(_resumo(linhas))
+        for r in linhas:
+            if r["modelo_mb"] <= 0:
+                print(
+                    f"aviso: {r['modelo']} não alocou nada na GPU {r['gpu']} — "
+                    "suspeite de carga em outra placa",
+                    file=sys.stderr,
+                )
     for falha in falhas:
         print(falha, file=sys.stderr)
     if falhas and not linhas:
