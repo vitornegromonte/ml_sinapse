@@ -171,9 +171,9 @@ def _resumo(linhas: list[dict]) -> str:
         f"Dois vLLM na mesma GPU: --util <= {livre / 2:.2f} cada "
         "(evite: dois contextos e dois allocators na mesma placa).\n"
         "O número das linhas vLLM é o orçamento que ele foi autorizado a usar,\n"
-        "não o peso do modelo: os pesos são uma fração, o resto vira cache KV\n"
-        "pré-alocado. Para achar o piso real, repita com --util baixo — e\n"
-        "carregue emb/linkage antes do vLLM quando dividirem a placa.\n"
+        "não o peso do modelo: medido ≈ util × placa + ~1 GB (contexto/grafos),\n"
+        "e o resto é cache KV pré-alocado. Para achar o piso real, repita com\n"
+        "util baixo — e carregue emb/linkage antes do vLLM ao dividir a placa.\n"
     )
 
 
