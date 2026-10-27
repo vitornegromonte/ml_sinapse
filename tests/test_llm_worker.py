@@ -40,9 +40,9 @@ class TestLlmWorker:
 
         mock_llm.predict.assert_called_once()
         args, _ = mock_llm.predict.call_args
-        prompt = args[0]
-        assert "texto extraído via OCR" in prompt
-        assert "Resumo" in prompt
+        prompts = args[0]
+        assert "texto extraído via OCR" in prompts[0]
+        assert "Resumo" in prompts[0]
 
         mock_redis.xadd.assert_awaited_once()
         call_args = mock_redis.xadd.call_args[0]
@@ -136,11 +136,53 @@ class TestLlmWorker:
         assert "Resumo" in prompt
         assert "Fatos principais" in prompt
 
-    async def test_predict_delegates_to_llm_model(self, worker, mock_llm):
-        """_predict deve delegar ao LLMModel.predict e extrair texto."""
-        result = worker._predict("meu prompt")
-        mock_llm.predict.assert_called_once_with("meu prompt")
-        assert result == "resumo gerado pelo LLM"
+    async def test_predict_many_delegates_to_llm_model(self, worker, mock_llm):
+        """_predict_many deve delegar ao LLMModel.predict e extrair os textos."""
+        mock_llm.predict.return_value = [{"text": "a"}, {"text": "b"}]
+
+        result = worker._predict_many(["prompt 1", "prompt 2"])
+
+        mock_llm.predict.assert_called_once_with(["prompt 1", "prompt 2"])
+        assert result == ["a", "b"]
+
+    async def test_batch_sends_every_prompt_in_one_predict_call(
+        self, worker, mock_redis, mock_llm, llm_payload
+    ):
+        """Um lote = uma chamada ao vLLM, não uma por documento."""
+        mock_llm.predict.return_value = [{"text": "resumo 1"}, {"text": "resumo 2"}]
+        outros = {**llm_payload, "document_id": "bo-456", "text": "outro texto"}
+
+        errors = await worker.process_batch([llm_payload, outros])
+
+        assert errors == [None, None]
+        mock_llm.predict.assert_called_once()
+        assert len(mock_llm.predict.call_args[0][0]) == 2
+        assert mock_redis.xadd.call_count == 2
+
+    async def test_batch_fails_only_the_malformed_item(
+        self, worker, mock_redis, mock_llm, llm_payload
+    ):
+        """Um payload inválido não derruba os outros do lote."""
+        mock_llm.predict.return_value = [{"text": "resumo"}]
+
+        errors = await worker.process_batch([{"text": "sem document_id"}, llm_payload])
+
+        assert isinstance(errors[0], ValueError)
+        assert errors[1] is None
+        assert len(mock_llm.predict.call_args[0][0]) == 1
+        assert mock_redis.xadd.call_count == 1
+
+    async def test_batch_reports_bronze_failure_for_its_item(
+        self, worker, mock_redis, mock_llm, llm_payload
+    ):
+        """MinIO fora do ar falha o item (retry/DLQ) e não publica."""
+        worker._ensure_storage()
+        worker._storage.save.side_effect = Exception("minio down")
+
+        errors = await worker.process_batch([llm_payload])
+
+        assert isinstance(errors[0], Exception)
+        mock_redis.xadd.assert_not_awaited()
 
     async def test_save_failure_fails_before_publishing(self, worker, mock_redis, llm_payload):
         """MinIO fora do ar: a task falha (retry/DLQ) e nada é publicado."""

@@ -15,6 +15,12 @@ from services.database import create_db_engine, create_session_factory
 
 
 class BaseWorker(ABC):
+    # Only workers that override process_batch (and so get one GPU call for
+    # the whole batch) may read more than one message per XREADGROUP: a serial
+    # worker that grabbed a batch would sit on messages its replicas could be
+    # processing at the same time.
+    supports_batch = False
+
     def __init__(self, stream: str, cfg=settings):
         self.stream = stream
         self.cfg = cfg
@@ -70,22 +76,26 @@ class BaseWorker(ABC):
     def _lease_key(self, message_id: str) -> str:
         return f"{self.stream}:lease:{message_id}"
 
-    async def _heartbeat(self, lease_key: str) -> None:
-        """Keep a short-TTL lease alive while the message is in flight.
+    def _batch_count(self) -> int:
+        return self.cfg.batch_size if self.supports_batch else 1
+
+    async def _heartbeat(self, lease_keys: list[str]) -> None:
+        """Keep a short-TTL lease alive while the messages are in flight.
 
         Without it, XAUTOCLAIM can only distinguish "idle a while" from "still
         running" by time, so any task slower than claim_idle_ms gets stolen and
-        processed twice (see _reclaim_stale)."""
+        processed twice (see _reclaim_stale). One task renews the whole batch."""
         while True:
             await asyncio.sleep(self.cfg.lease_heartbeat_seconds)
-            try:
-                await self.redis.set(
-                    lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
-                )
-            except Exception as exc:
-                self.logger.warning(
-                    "Lease heartbeat failed for %s: %s", lease_key, exc
-                )
+            for lease_key in lease_keys:
+                try:
+                    await self.redis.set(
+                        lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
+                    )
+                except Exception as exc:
+                    self.logger.warning(
+                        "Lease heartbeat failed for %s: %s", lease_key, exc
+                    )
 
     async def _lease_alive(self, message_id: str) -> bool:
         return bool(await self.redis.exists(self._lease_key(message_id)))
@@ -114,6 +124,26 @@ class BaseWorker(ABC):
     async def process(self, data: dict) -> None:
         ...
 
+    async def process_batch(self, items: list[dict]) -> list[Exception | None]:
+        """Process N messages and return one outcome per item (None = done).
+
+        The default runs the worker's own process(), one item at a time, so a
+        worker keeps working unchanged. A worker whose unit of GPU work is one
+        item (embedding, LLM) overrides this to send all N to a single
+        encode()/generate() and sets supports_batch = True; it must return
+        exactly one result per item — the retry/DLQ bookkeeping stays per
+        message. An exception escaping this method counts as a failure of
+        every item in the batch.
+        """
+        results: list[Exception | None] = []
+        for data in items:
+            try:
+                await self.process(data)
+                results.append(None)
+            except Exception as exc:
+                results.append(exc)
+        return results
+
     async def _reclaim_stale(self) -> None:
         """Reclaim pending messages idle longer than claim_idle_ms and reprocess them.
 
@@ -131,8 +161,9 @@ class BaseWorker(ABC):
                     self.consumer_id,
                     min_idle_time=self.cfg.claim_idle_ms,
                     start_id=cursor,
-                    count=self.cfg.batch_size,
+                    count=self._batch_count(),
                 )
+                reclaimable = []
                 for message_id, raw in claimed:
                     if await self._lease_alive(message_id):
                         self.logger.info(
@@ -141,46 +172,73 @@ class BaseWorker(ABC):
                             message_id,
                         )
                         continue
-                    await self._process_message(message_id, raw)
+                    reclaimable.append((message_id, raw))
+                if reclaimable:
+                    await self._process_messages(reclaimable)
                 if cursor == "0-0":
                     break
         except Exception as exc:
             self.logger.error("Error reclaiming stale pending messages: %s", exc)
 
-    async def _process_message(
-        self, message_id: str, data: dict
-    ) -> None:
-        lease_key = self._lease_key(message_id)
-        # Set before processing so a concurrent reclaim sees the lease.
-        await self.redis.set(
-            lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
-        )
-        heartbeat = asyncio.create_task(self._heartbeat(lease_key))
-        try:
-            await self.process(data)
-            await self.redis.xack(self.stream, self.group, message_id)
-            await self._cleanup_retries(message_id)
-        except Exception as exc:
-            self.logger.error(
-                "Error processing %s: %s", message_id, exc
+    async def _ack(self, message_id: str) -> None:
+        await self.redis.xack(self.stream, self.group, message_id)
+        await self._cleanup_retries(message_id)
+
+    async def _fail(self, message_id: str, data: dict, exc: Exception) -> None:
+        self.logger.error("Error processing %s: %s", message_id, exc)
+        retries = await self._increment_retries(message_id)
+        if retries >= self.cfg.max_retries:
+            await self._dead_letter(message_id, data, str(exc))
+            await self._ack(message_id)
+        else:
+            self.logger.info(
+                "Leaving %s pending for retry %d/%d — will be reclaimed by "
+                "XAUTOCLAIM once idle %dms (not acking it now)",
+                message_id,
+                retries,
+                self.cfg.max_retries,
+                self.cfg.claim_idle_ms,
             )
-            retries = await self._increment_retries(message_id)
-            if retries >= self.cfg.max_retries:
-                await self._dead_letter(message_id, data, str(exc))
-                await self.redis.xack(self.stream, self.group, message_id)
-                await self._cleanup_retries(message_id)
-            else:
-                self.logger.info(
-                    "Leaving %s pending for retry %d/%d — will be reclaimed by "
-                    "XAUTOCLAIM once idle %dms (not acking it now)",
-                    message_id,
-                    retries,
-                    self.cfg.max_retries,
-                    self.cfg.claim_idle_ms,
+            # Deliberately NOT acking: an acked message can never be
+            # redelivered by Redis Streams. Leaving it pending is what
+            # lets _reclaim_stale() pick it back up for another attempt.
+
+    async def _process_messages(
+        self, messages: list[tuple[str, dict]]
+    ) -> None:
+        """Run one batch under a single heartbeat, then settle each message.
+
+        The lease covers every message in the batch (one slow GPU call must
+        not let XAUTOCLAIM steal the batch's tail), while ack/retry/DLQ are
+        decided per message from the outcome process_batch returned.
+        """
+        lease_keys = [self._lease_key(message_id) for message_id, _ in messages]
+        # Set before processing so a concurrent reclaim sees the leases.
+        for lease_key in lease_keys:
+            await self.redis.set(
+                lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
+            )
+        heartbeat = asyncio.create_task(self._heartbeat(lease_keys))
+        try:
+            try:
+                results = await self.process_batch(
+                    [data for _, data in messages]
                 )
-                # Deliberately NOT acking: an acked message can never be
-                # redelivered by Redis Streams. Leaving it pending is what
-                # lets _reclaim_stale() pick it back up for another attempt.
+                if len(results) != len(messages):
+                    raise RuntimeError(
+                        f"process_batch returned {len(results)} results for "
+                        f"{len(messages)} messages"
+                    )
+            except Exception as exc:
+                # A batch-level failure (CUDA OOM, DB down) says nothing about
+                # individual items: every one takes the normal retry path.
+                results = [exc] * len(messages)
+
+            for (message_id, data), result in zip(messages, results):
+                if result is None:
+                    await self._ack(message_id)
+                else:
+                    await self._fail(message_id, data, result)
         finally:
             heartbeat.cancel()
             try:
@@ -189,7 +247,13 @@ class BaseWorker(ABC):
                 pass
             # Released either way: on success the message is acked; on failure
             # the retry must be reclaimable again after claim_idle_ms.
-            await self.redis.delete(lease_key)
+            for lease_key in lease_keys:
+                await self.redis.delete(lease_key)
+
+    async def _process_message(
+        self, message_id: str, data: dict
+    ) -> None:
+        await self._process_messages([(message_id, data)])
 
     async def start(self) -> None:
         self.redis = await self._connect_redis()
@@ -215,13 +279,12 @@ class BaseWorker(ABC):
                     self.group,
                     self.consumer_id,
                     {self.stream: ">"},
-                    count=self.cfg.batch_size,
+                    count=self._batch_count(),
                     block=self.cfg.poll_timeout_ms,
                 )
                 if results:
                     for _, messages in results:
-                        for message_id, raw in messages:
-                            await self._process_message(message_id, raw)
+                        await self._process_messages(messages)
             except asyncio.CancelledError:
                 break
             except Exception as exc:

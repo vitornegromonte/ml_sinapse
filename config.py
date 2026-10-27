@@ -119,7 +119,12 @@ class Settings(BaseSettings):
 
     max_retries: int = 3
     poll_timeout_ms: int = 50000
-    batch_size: int = 1
+    # Messages read per XREADGROUP. Honoured only by workers with
+    # supports_batch = True (embedding, llm), which turn the whole batch into
+    # one encode()/generate() call; serial workers (ocr, ner, cluster,
+    # linkage) keep reading one at a time so they never hold messages their
+    # replicas could be working on.
+    batch_size: int = 8
     # A message failed but hasn't hit max_retries is left un-acked (still
     # pending) rather than dropped — this is how long it sits idle before
     # XAUTOCLAIM reclaims it for another attempt. See workers/base_worker.py.

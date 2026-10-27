@@ -35,6 +35,8 @@ MODEL_VERSION = "neuralmind/bert-base-portuguese-cased"
 
 
 class EmbeddingWorker(BaseWorker):
+    supports_batch = True
+
     def __init__(self, cfg=settings):
         super().__init__(cfg.embedding_stream, cfg)
         self._encoder: SentenceTransformerEncoder | None = None
@@ -57,84 +59,125 @@ class EmbeddingWorker(BaseWorker):
         except ImportError:
             return False
 
-    async def _load_narrativa(self, db: AsyncSession, boletim_id: int) -> str | None:
+    async def _load_narrativas(
+        self, db: AsyncSession, boletim_ids: list[int]
+    ) -> dict[int, str | None]:
         result = await db.execute(
             text(
-                "SELECT narrativa_normalizada FROM silver.boletim "
-                "WHERE id_infopol = :id"
+                "SELECT id_infopol, narrativa_normalizada FROM silver.boletim "
+                "WHERE id_infopol = ANY(:ids)"
             ),
-            {"id": boletim_id},
+            {"ids": boletim_ids},
         )
-        row = result.first()
-        return row[0] if row is not None else None
+        return {row[0]: row[1] for row in result}
 
     async def process(self, data: dict) -> None:
-        boletim_id = EmbeddingTask(**data).boletim_id
+        (error,) = await self.process_batch([data])
+        if error is not None:
+            raise error
+
+    async def process_batch(self, items: list[dict]) -> list[Exception | None]:
+        """One SELECT, one encode() and one transaction for the whole batch.
+
+        The encode is the dominant cost and scales ~10x with batch size; the
+        three round trips per task (SELECT, UPDATE, INSERT) become three for
+        the batch. A malformed payload or a BO with no narrative is settled on
+        its own, as in the single-item path.
+        """
+        errors: list[Exception | None] = [None] * len(items)
+        tasks: list[tuple[int, int, dict]] = []
+        for position, data in enumerate(items):
+            try:
+                tasks.append((position, EmbeddingTask(**data).boletim_id, data))
+            except Exception as exc:
+                errors[position] = exc
+        if not tasks:
+            return errors
 
         async with self.db_session_factory() as db:  # type: AsyncSession
-            text_content = await self._load_narrativa(db, boletim_id)
+            narratives = await self._load_narrativas(db, [t[1] for t in tasks])
 
-        if not text_content or not text_content.strip():
-            self.logger.warning(
-                "Skipping boletim_id=%s — no narrative text in silver.boletim",
-                boletim_id,
-            )
-            return
+        ready: dict[int, tuple[int, int, dict, str]] = {}
+        for position, boletim_id, data in tasks:
+            text_content = narratives.get(boletim_id)
+            if not text_content or not text_content.strip():
+                self.logger.warning(
+                    "Skipping boletim_id=%s — no narrative text in silver.boletim",
+                    boletim_id,
+                )
+                continue
+            # A batch can repeat a BO; keep only its last appearance. The one
+            # UPDATE cannot supersede a row an earlier INSERT of this same
+            # batch created, and two current rows break GoldMixin's contract.
+            ready[boletim_id] = (position, boletim_id, data, text_content)
+        if not ready:
+            return errors
+        batch = list(ready.values())
 
         if self._encoder is None:
             await asyncio.to_thread(self._load_model)
 
-        vec = await asyncio.to_thread(self._encoder.encode, [text_content])
-        embedding = vec[0].tolist()
+        try:
+            vecs = await asyncio.to_thread(
+                self._encoder.encode, [item[3] for item in batch]
+            )
+        except Exception as exc:
+            for position, *_ in batch:
+                errors[position] = exc
+            return errors
 
-        async with self.db_session_factory() as db:  # type: AsyncSession
-            # Atomic supersede-then-insert, per GoldMixin's contract (see
-            # app/core/mixins.py docstring): the old current row (if any)
-            # gets superseded, the new one becomes current, both in one
-            # transaction — never a window with zero or two current rows.
-            # Everything (including model_id resolution) happens inside this
-            # one begin() block: AsyncSession autobegins on first use, so any
-            # prior statement on `db` (e.g. a SELECT run before this block)
-            # would already have an implicit transaction open, and this
-            # explicit begin() would then conflict with it.
-            async with db.begin():
-                model_id = await get_or_create_model_id(
-                    db,
-                    MODEL_NAME,
-                    MODEL_VERSION,
-                    {"library": "sentence-transformers"},
-                )
+        try:
+            async with self.db_session_factory() as db:  # type: AsyncSession
+                # Atomic supersede-then-insert, per GoldMixin's contract (see
+                # app/core/mixins.py docstring): the old current row (if any)
+                # gets superseded, the new one becomes current, both in one
+                # transaction — never a window with zero or two current rows.
+                async with db.begin():
+                    model_id = await get_or_create_model_id(
+                        db,
+                        MODEL_NAME,
+                        MODEL_VERSION,
+                        {"library": "sentence-transformers"},
+                    )
 
-                await db.execute(
-                    text(
-                        """
-                        UPDATE gold.bo_embedding
-                        SET is_current = false, superseded_at = now()
-                        WHERE boletim_id = :boletim_id AND is_current = true
-                        """
-                    ),
-                    {"boletim_id": boletim_id},
-                )
-                await db.execute(
-                    text(
-                        """
-                        INSERT INTO gold.bo_embedding
-                            (boletim_id, embedding, model_id, generated_at, pipeline_run_id)
-                        VALUES
-                            (:boletim_id, CAST(:embedding AS vector), :model_id, now(), :pipeline_run_id)
-                        """
-                    ),
-                    {
-                        "boletim_id": boletim_id,
-                        "embedding": str(embedding),
-                        "model_id": model_id,
-                        "pipeline_run_id": data.get("pipeline_run_id"),
-                    },
-                )
+                    await db.execute(
+                        text(
+                            """
+                            UPDATE gold.bo_embedding
+                            SET is_current = false, superseded_at = now()
+                            WHERE boletim_id = ANY(:ids) AND is_current = true
+                            """
+                        ),
+                        {"ids": [item[1] for item in batch]},
+                    )
+                    await db.execute(
+                        text(
+                            """
+                            INSERT INTO gold.bo_embedding
+                                (boletim_id, embedding, model_id, generated_at, pipeline_run_id)
+                            VALUES
+                                (:boletim_id, CAST(:embedding AS vector), :model_id, now(), :pipeline_run_id)
+                            """
+                        ),
+                        [
+                            {
+                                "boletim_id": boletim_id,
+                                "embedding": str(vec.tolist()),
+                                "model_id": model_id,
+                                "pipeline_run_id": data.get("pipeline_run_id"),
+                            }
+                            for (_, boletim_id, data, _), vec in zip(batch, vecs)
+                        ],
+                    )
+        except Exception as exc:
+            for position, *_ in batch:
+                errors[position] = exc
+            return errors
 
         self.logger.info(
-            "Embedding written: boletim_id=%s dim=%d", boletim_id, len(embedding)
+            "Embeddings written: %d of %d tasks", len(batch), len(items)
         )
+        return errors
 
     def run(self) -> None:
         try:
