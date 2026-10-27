@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 class LlmWorker(BaseWorker):
     """Consome ocr:tasks:results e gera resumos via LLM (vLLM)."""
 
+    supports_batch = True
+
     def __init__(self, cfg=settings):
         super().__init__(cfg.ocr_stream + ":results", cfg)
         self._llm: LLMModel | None = None
@@ -59,56 +61,86 @@ class LlmWorker(BaseWorker):
     def _build_prompt(self, text: str) -> str:
         return self.cfg.llm_prompt_template.format(text=text)
 
-    def _predict(self, prompt: str) -> str:
-        results = self._llm.predict(prompt)
-        return results[0]["text"]
+    def _predict_many(self, prompts: list[str]) -> list[str]:
+        return [result["text"] for result in self._llm.predict(prompts)]
 
     async def process(self, data: dict) -> None:
+        (error,) = await self.process_batch([data])
+        if error is not None:
+            raise error
+
+    async def process_batch(self, items: list[dict]) -> list[Exception | None]:
+        """One generate() call for the whole batch: vLLM batches internally,
+        N prompts in one call instead of N calls of one prompt.
+
+        Payload errors, empty text and bronze/publish failures stay per item,
+        so retry/DLQ keeps its per-message meaning.
+        """
+        errors: list[Exception | None] = [None] * len(items)
+        ready: list[tuple[int, LlmTask, dict, str]] = []
+        for position, data in enumerate(items):
+            try:
+                task = LlmTask(**data)
+            except Exception as exc:
+                errors[position] = exc
+                continue
+            if not task.text or not task.text.strip():
+                self.logger.warning(
+                    "Empty text for document_id=%s, skipping", task.document_id
+                )
+                continue
+            ready.append((position, task, data, self._build_prompt(task.text)))
+        if not ready:
+            return errors
+
         if self._llm is None:
             await asyncio.to_thread(self._load_model)
 
-        task = LlmTask(**data)
-        doc_id = task.document_id
-
-        text = task.text
-        if not text or not text.strip():
-            self.logger.warning(
-                "Empty text for document_id=%s, skipping", doc_id
+        try:
+            summaries = await asyncio.to_thread(
+                self._predict_many, [item[3] for item in ready]
             )
-            return
+        except Exception as exc:
+            for position, *_ in ready:
+                errors[position] = exc
+            return errors
 
-        prompt = self._build_prompt(text)
-        summary = await asyncio.to_thread(self._predict, prompt)
+        for (position, task, data, _), summary in zip(ready, summaries):
+            doc_id = task.document_id
+            if not summary.strip():
+                self.logger.warning(
+                    "Empty summary generated for document_id=%s", doc_id
+                )
+                continue
 
-        if not summary.strip():
-            self.logger.warning(
-                "Empty summary generated for document_id=%s", doc_id
+            self.logger.info(
+                "LLM result: document_id=%s source_length=%d summary_length=%d summary=%.100s",
+                doc_id,
+                len(task.text),
+                len(summary),
+                summary,
             )
-            return
 
-        self.logger.info(
-            "LLM result: document_id=%s source_length=%d summary_length=%d summary=%.100s",
-            doc_id,
-            len(text),
-            len(summary),
-            summary,
-        )
+            result_data = {**data, "text": summary}
 
-        result_data = {**data, "text": summary}
+            # Bronze before the results notification: save() raises on
+            # failure, so a MinIO outage fails the task (retry → DLQ) instead
+            # of publishing a result that never landed in bronze.
+            try:
+                self._ensure_storage()
+                self._storage.save(
+                    prefix="llm",
+                    document_id=doc_id,
+                    data=summary.encode("utf-8"),
+                )
 
-        # Bronze before the results notification: save() raises on failure, so
-        # a MinIO outage fails the task (retry → DLQ) instead of publishing a
-        # result that never landed in bronze.
-        self._ensure_storage()
-        self._storage.save(
-            prefix="llm",
-            document_id=doc_id,
-            data=summary.encode("utf-8"),
-        )
+                self._ensure_publisher()
+                if self._result_publisher is not None:
+                    await self._result_publisher.publish(result_data, summary)
+            except Exception as exc:
+                errors[position] = exc
 
-        self._ensure_publisher()
-        if self._result_publisher is not None:
-            await self._result_publisher.publish(result_data, summary)
+        return errors
 
     def run(self) -> None:
         try:
