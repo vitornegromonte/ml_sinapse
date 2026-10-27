@@ -37,7 +37,7 @@ supersede-then-insert par a par como bo_embedding/bo_relacionado.
 """
 import asyncio
 
-import networkx as nx
+from networkx.utils.union_find import UnionFind
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,6 +59,9 @@ class ClusterWorker(BaseWorker):
         super().__init__(cfg.cluster_stream, cfg)
 
     async def _carregar_arestas(self, db: AsyncSession) -> list[tuple[int, int]]:
+        # shortcut: fetchall de todas as arestas (~60 MB em 490k, ~600 MB em
+        # 5M). Trocar por db.stream() + union-find incremental quando o grafo
+        # passar de ~1M arestas.
         result = await db.execute(
             text(
                 """
@@ -72,9 +75,13 @@ class ClusterWorker(BaseWorker):
         return [(row[0], row[1]) for row in result.fetchall()]
 
     def _montar_componentes(self, arestas: list[tuple[int, int]]) -> list[list[int]]:
-        grafo = nx.Graph()
-        grafo.add_edges_from(arestas)
-        componentes = [sorted(c) for c in nx.connected_components(grafo)]
+        # Union-find, não nx.Graph: o resultado é o mesmo conjunto de
+        # componentes, mas não há dict de adjacência para 490k arestas
+        # (centenas de MB, GBs a 5M) — só um nó por BO.
+        grupos = UnionFind()
+        for origem, destino in arestas:
+            grupos.union(origem, destino)
+        componentes = [sorted(c) for c in grupos.to_sets()]
         componentes.sort(key=len, reverse=True)
         return componentes
 
@@ -113,7 +120,7 @@ class ClusterWorker(BaseWorker):
                     MODEL_NAME,
                     MODEL_VERSION,
                     {
-                        "algoritmo": "networkx.connected_components",
+                        "algoritmo": "union-find",
                         "score_threshold": self.cfg.cluster_score_threshold,
                     },
                 )
@@ -142,16 +149,21 @@ class ClusterWorker(BaseWorker):
                     )
                     id_cluster = result.scalar_one()
 
-                    for boletim_id in membros:
-                        await db.execute(
-                            text(
-                                """
-                                INSERT INTO gold.bo_cluster (cluster_id, boletim_id)
-                                VALUES (:cluster_id, :boletim_id)
-                                """
-                            ),
-                            {"cluster_id": id_cluster, "boletim_id": boletim_id},
-                        )
+                    # executemany: um round trip por cluster em vez de um por
+                    # membro (5.013 hoje), na mesma transação que segura o
+                    # UPDATE de supersede.
+                    await db.execute(
+                        text(
+                            """
+                            INSERT INTO gold.bo_cluster (cluster_id, boletim_id)
+                            VALUES (:cluster_id, :boletim_id)
+                            """
+                        ),
+                        [
+                            {"cluster_id": id_cluster, "boletim_id": boletim_id}
+                            for boletim_id in membros
+                        ],
+                    )
                     total_membros += len(membros)
 
         self.logger.info(
