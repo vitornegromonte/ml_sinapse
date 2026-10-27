@@ -71,6 +71,7 @@ Pipeline drivers in `scripts/` (run from repo root):
 | `backfill_linkage_scores.py` | `ML_DATABASE_URL`, `REDIS_URL` | generate candidate pairs (top-K HNSW + strong-entity overlap) |
 | `trigger_clustering.py` | `REDIS_URL` | fire connected-component clustering |
 | `test_ocr_llm.py` | GPU | one-shot PDF → OCR → LLM smoke test |
+| `profile_models.py` | GPU | measure each worker's VRAM (`ocr`/`llm`/`embedding`/`linkage`) to decide the GPU routing — `--all --gpu 0`, one process per model |
 | `import_bo_ner.py` | sibling `../sinapse` checkout + DB URLs | **legacy one-shot**: seeds `silver.boletim` + `gold.bo_entidades` through the backend ORM (already executed; kept as-is per decision) |
 | `init_buckets.sh`, `download_test_images.py`, `publish_{ocr,ner}_task.py` | — | bucket bootstrap / fixture helpers |
 
