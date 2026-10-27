@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
-from workers.linkage_scoring_worker import LinkageScoringWorker
+from workers.linkage_scoring_worker import LinkageScoringWorker, _cos_matriz
 
 DIM = 8
 
@@ -137,3 +137,19 @@ async def test_pair_without_embedding_is_skipped_and_not_cached(worker, session)
 
     assert session.writes == []
     assert session.profile_queries == 3  # BO 1 once, BO 99 twice
+
+
+def test_cos_matriz_casa_com_sklearn_inclusive_vetor_zero():
+    """O _sim_descricao deixou de chamar sklearn; a semântica tem que ficar
+    idêntica — inclusive a linha de norma zero, que não pode virar NaN."""
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    rng = np.random.default_rng(0)
+    a = rng.standard_normal((3, DIM)).astype(np.float32)
+    b = rng.standard_normal((4, DIM)).astype(np.float32)
+    a[1] = 0.0
+
+    obtido = _cos_matriz(a, b)
+
+    assert np.allclose(obtido, cosine_similarity(a, b), atol=1e-6)
+    assert np.all(obtido[1] == 0.0)

@@ -28,7 +28,6 @@ import asyncio
 from collections import OrderedDict
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,6 +83,15 @@ def _cos(a: np.ndarray, b: np.ndarray) -> float:
     if not norma_a or not norma_b:
         return 0.0
     return float(np.dot(a, b)) / (norma_a * norma_b)
+
+
+def _cos_matriz(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Cosine entre cada linha de `a` e cada linha de `b` — as descrições de um
+    BO contra as do outro. Mesmo motivo do _cos (uma chamada por par) e mesma
+    semântica: linha de norma zero vira 0.0, como no sklearn."""
+    sims = a @ b.T
+    normas = np.linalg.norm(a, axis=1)[:, None] * np.linalg.norm(b, axis=1)[None, :]
+    return np.divide(sims, normas, out=np.zeros_like(sims), where=normas > 0)
 
 
 class LinkageScoringWorker(BaseWorker):
@@ -218,7 +226,7 @@ class LinkageScoringWorker(BaseWorker):
         emb_a, emb_b = a["emb_descricoes"], b["emb_descricoes"]
         if emb_a is None or emb_b is None or len(emb_a) == 0 or len(emb_b) == 0:
             return 0.0, None
-        sims = cosine_similarity(emb_a, emb_b)
+        sims = _cos_matriz(emb_a, emb_b)
         pos = np.unravel_index(np.argmax(sims), sims.shape)
         melhor = float(sims[pos])
         par_textos = (a["descricoes"][pos[0]][1], b["descricoes"][pos[1]][1])
