@@ -6,16 +6,29 @@ from minio import Minio
 logger = logging.getLogger(__name__)
 
 
+def build_minio_client(endpoint: str, access_key: str, secret_key: str) -> Minio:
+    """The one Minio client constructor in this package.
+
+    Minio wants host[:port], but endpoints arrive from env/compose with a
+    scheme often enough that both call sites used to strip it themselves —
+    and storage.py stripped only `http://`, so an `https://minio:9000`
+    reached the client intact and every request URL came out as
+    `http://https://minio:9000/...`. The scheme is stripped, not used to
+    turn TLS on: callers have always run `secure=False`.
+    """
+    return Minio(
+        endpoint.replace("http://", "").replace("https://", ""),
+        access_key,
+        secret_key,
+        secure=False,
+    )
+
+
 class StorageService:
     """Salva resultados de workers no MinIO (bucket bronze)."""
 
     def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str):
-        self._client = Minio(
-            endpoint.replace("http://", ""),
-            access_key,
-            secret_key,
-            secure=False,
-        )
+        self._client = build_minio_client(endpoint, access_key, secret_key)
         self._bucket = bucket
 
     def load(self, prefix: str, document_id: str) -> str | None:

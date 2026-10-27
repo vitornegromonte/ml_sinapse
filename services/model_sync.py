@@ -11,7 +11,7 @@ before loading.
 import logging
 from pathlib import Path
 
-from minio import Minio
+from services.storage import build_minio_client
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def sync_if_missing(
 
     dest.mkdir(parents=True, exist_ok=True)
 
-    client = Minio(endpoint.replace("http://", "").replace("https://", ""), access_key, secret_key, secure=False)
+    client = build_minio_client(endpoint, access_key, secret_key)
 
     objects = list(client.list_objects(bucket, prefix=prefix, recursive=True))
     if not objects:
