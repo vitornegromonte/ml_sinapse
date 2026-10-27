@@ -134,18 +134,19 @@ class TestMlflowOcrModel:
             messages = model._processor.apply_chat_template.call_args[0][0]
             assert messages[0]["content"][1]["text"] == "PROMPT DO CHAMADOR"
 
-    def test_device_with_gpu(self, mock_tensors):
-        """device property deve usar gpu_device configurado."""
-        loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
+    def test_device_property_reports_configured_gpu(self):
+        """Sem modelo carregado, cai no gpu_device configurado."""
+        model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=1)
+        model._model = None
+        with patch("torch.cuda.is_available", return_value=True):
+            assert model.device == "cuda:1"
 
-        with patch("mlflow.transformers.load_model", return_value=loaded):
-            model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=1)
-            model.load()
-            # device do modelo mockado é "cpu", então retorna "cpu"
-            # O fallback com gpu_device=1 só é usado se não houver GPU disponível
-            # e _model estiver None
-            model._model = None
-            assert model.device == "cpu"  # sem CUDA disponível, fallback pra cpu
+    def test_device_property_cpu_fallback(self):
+        """Sem CUDA, cai em cpu."""
+        model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=1)
+        model._model = None
+        with patch("torch.cuda.is_available", return_value=False):
+            assert model.device == "cpu"
 
     def test_unload_clears_model(self, mock_tensors):
         """unload deve limpar modelo e processor."""
