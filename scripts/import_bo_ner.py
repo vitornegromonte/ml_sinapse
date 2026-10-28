@@ -22,10 +22,12 @@ de ingestão de Boletim ainda (só o schema). Este script cria os dois:
   3. gold.bo_entidades    — 1 linha por BO, idempotente por
                             (boletim_id, pipeline_run_id)
 
-Processamento em lotes: cada lote é UMA transação (commit por lote, não por
-linha) — ver process_batch(). Se um lote falhar, ele é logado (com os doc_ids
-envolvidos) e pulado; re-rodar o script depois é seguro, tudo aqui é
-idempotente.
+Processamento em lotes: cada lote grava em DUAS transações, porque usa dois
+papéis: silver (`AsyncSessionLocal`, sinapse_backend) commita primeiro, e
+depois gold (`MlSessionLocal`, sinapse_ml). Se a fase gold falhar depois do
+commit da silver, o lote é logado com os doc_ids e pulado; re-rodar o script
+depois é seguro (tudo aqui é idempotente) e repara a parte gold. Não há rollback
+cruzando as duas transações.
 
 Uso:
     python import_bo_ner.py \
@@ -297,7 +299,11 @@ async def _process_gold_phase(
     stats: Stats,
 ) -> None:
     """Cria BOEntidades (schema gold, via sinapse_ml) para os registros que a
-    fase silver conseguiu resolver — precisa rodar depois, boletim_id é FK."""
+    fase silver conseguiu resolver — precisa rodar depois, boletim_id é FK.
+
+    O contrato "no máximo uma linha is_current por BO" também depende do índice
+    único parcial em gold.bo_entidades WHERE is_current, definido nas migrations
+    Alembic do backend (sinapse/backend), não neste repo."""
     async with MlSessionLocal() as db:
         entidades_repo = BaseRepository(BOEntidades, db)
 

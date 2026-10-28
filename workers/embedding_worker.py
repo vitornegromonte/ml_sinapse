@@ -140,6 +140,10 @@ class EmbeddingWorker(BaseWorker):
                         {"library": "sentence-transformers"},
                     )
 
+                    # The "never two current rows" guarantee depends on the
+                    # backend's partial unique index on gold.bo_embedding
+                    # (boletim_id) WHERE is_current. The index lives in the
+                    # sinapse backend Alembic migrations, not in this repo.
                     await db.execute(
                         text(
                             """

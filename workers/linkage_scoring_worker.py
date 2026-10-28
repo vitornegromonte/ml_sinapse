@@ -329,6 +329,11 @@ class LinkageScoringWorker(BaseWorker):
                     },
                 )
 
+                # Same invariant: the backend's partial unique index on
+                # gold.bo_relacionado (id_bo_origem, id_bo_destino) WHERE
+                # is_current is what makes UPDATE + INSERT safe under
+                # concurrency. It lives in the sinapse backend Alembic
+                # migrations, not in this repo.
                 await db.execute(
                     text(
                         """

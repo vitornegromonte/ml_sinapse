@@ -1,6 +1,6 @@
 # ADR-001: Estrutura do serviço de ML
 
-**Status:** ✅ Aceito  
+**Status:** ✅ Aceito (histórico — ver Atualização)<br>
 **Data:** 2026-06-02  
 
 ## Contexto
@@ -36,3 +36,25 @@ ml_service/
 - **Positivas:** Separação clara entre modelos, workers e config; cada worker é um processo independente; config centralizada via env vars.
 - **Negativas:** Workers não podem compartilhar GPU diretamente (cada processo precisa da sua alocação); complexidade adicional de orquestração via Redis.
 - **Neutro:** O diretório `models/` serve tanto para uso interno dos workers quanto para deploy via BentoML.
+
+## Atualização (2026-10-28)
+
+O corpo acima é histórico. O pacote foi achatado de `ml_service/` para a raiz
+do repo e a árvore atual é:
+
+```
+./
+├── config.py
+├── run_worker.py          # um worker por processo/container
+├── workers/               # base, ocr, llm, ner, embedding, linkage_scoring, cluster
+├── models/                # base_model, embedding_model, llm_model, tasks, ocr/
+├── services/              # storage, database, gold, image_loader, publishers, normalização
+└── scripts/
+```
+
+- `models/bento.py` foi removido em `fc49c1c`.
+- `workers/tokenizer_worker.py` foi removido em B5 (`4997308`); não há worker
+  nem stream de tokenização.
+- `training/` nunca existiu neste repo.
+- `LLMModel` hoje é vLLM-only; `BaseModelWrapper` é só a ABC mínima
+  (`load`/`predict`/`unload`), não o dispatch de engines descrito aqui.

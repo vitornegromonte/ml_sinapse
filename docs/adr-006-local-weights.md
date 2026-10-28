@@ -1,6 +1,6 @@
 # ADR-006: Pesos de modelo locais
 
-**Status:** ✅ Aceito  
+**Status:** ✅ Aceito (atualizado em 2026-10-28)<br>
 **Data:** 2026-06-02  
 
 ## Contexto
@@ -27,3 +27,12 @@ volume model_cache:/model-cache
 
 - **Positivas:** Imagem Docker leve (modelos não incluídos na build); cache persistente entre execuções; fácil troca de versão (só substituir o volume); compatível com MLflow Registry futuro.
 - **Negativas:** Primeira execução demora (download); volume ocupado em disco (~2-5GB por modelo); workers precisam de permissão de escrita no volume.
+
+## Atualização (2026-10-28)
+
+O volume continua `/model-cache`, mas a árvore interna mudou: não existem
+`bertimbau/` nem caminhos de tokenizer, porque não há worker de tokenização.
+Os pesos são sincronizados do bucket `models` por
+`services/model_sync.py` (B17); o cache local é por modelo (HuggingFace/vLLM),
+o NER mock usa spaCy, e OCR/NER carregam do MLflow quando `ocr_model_uri` /
+`ner_model_uri` está configurado.

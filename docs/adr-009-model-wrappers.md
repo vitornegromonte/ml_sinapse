@@ -1,6 +1,6 @@
 # ADR-009: Wrappers de modelo modulares (BaseModelWrapper)
 
-**Status:** ✅ Aceito  
+**Status:** 🟡 Parcialmente substituído (ver Atualização)<br>
 **Data:** 2026-06-02  
 
 ## Contexto
@@ -37,3 +37,15 @@ Além disso, `BaseModelWrapper` expõe métodos estáticos auxiliares:
 
 - **Positivas:** Workers não precisam conhecer o engine específico; troca de engine via config (sem mudança de código); interface `load/predict/unload` padronizada; reúso em workers e no BentoML service.
 - **Negativas:** Camada extra de abstração; predict precisa lidar com formatos de entrada/saída diferentes entre engines; `unload()` nem sempre é trivial (especialmente com CUDA).
+
+## Atualização (2026-10-28)
+
+Só a ABC sobreviveu. `BaseModelWrapper` continua em `models/base_model.py`
+com `load`/`predict`/`unload`, mas **não há dispatch de engine**:
+`LLMModel` é vLLM-only desde `fc49c1c` e o parâmetro `engine=` foi removido.
+Os estáticos MLflow (`resolve_model_uri`, `load_from_registry`,
+`register_model`) foram apagados em B5 (`4997308`), e BentoML não existe.
+
+O OCR não usa `BaseModelWrapper`; usa `AbstractOcrModel` + registry
+(`models/ocr/`). Portanto o que resta é a interface comum do LLM, não a
+hierarquia multi-engine descrita acima.
