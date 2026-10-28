@@ -38,6 +38,11 @@ class _FakeSession:
 
 
 async def test_supersede_takes_advisory_lock_before_touching_clusters():
+    """Arrange: a worker with a stub session recording every statement.
+    Act: process one clustering trigger.
+    Assert: pg_advisory_xact_lock with the shared key is the first statement,
+    before the UPDATE that supersedes gold.clusters.
+    """
     worker = ClusterWorker()
     statements = []
     worker.db_session_factory = lambda: _FakeSession(statements)
@@ -57,12 +62,21 @@ async def test_supersede_takes_advisory_lock_before_touching_clusters():
 
 
 def test_montar_componentes_agrupa_sem_montar_grafo():
+    """Arrange: edges with a shared node, a separate pair, and a duplicate.
+    Act: build the connected components.
+    Assert: two components, with duplicates collapsed and no graph object.
+    """
     worker = ClusterWorker()
 
     assert worker._montar_componentes([(1, 2), (2, 3), (7, 8), (1, 2)]) == [[1, 2, 3], [7, 8]]
 
 
 def test_montar_componentes_inclui_autolaco_e_ignora_no_sem_aresta():
+    """Arrange: edges with a self-loop and no edge for node 4.
+    Act: build the connected components.
+    Assert: the self-loop node forms its own component and the isolated node is
+    absent.
+    """
     worker = ClusterWorker()
 
     # Mesmo resultado do nx.Graph anterior: 9 é nó (autolago), 4 não é.
@@ -70,6 +84,10 @@ def test_montar_componentes_inclui_autolaco_e_ignora_no_sem_aresta():
 
 
 async def test_membros_sao_inseridos_em_lote_por_cluster():
+    """Arrange: two components, one with two members and one with one.
+    Act: process one clustering trigger.
+    Assert: one INSERT per cluster, each with that cluster's member rows.
+    """
     worker = ClusterWorker()
     statements = []
     worker.db_session_factory = lambda: _FakeSession(statements)

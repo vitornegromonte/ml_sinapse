@@ -93,7 +93,11 @@ def worker(session):
 
 
 async def test_encodes_each_bo_once_across_pairs(worker, session):
-    """BO 1 is an endpoint of both pairs but must be loaded and encoded once."""
+    """Arrange: two pairs that share BO 1 as an endpoint.
+    Act: process both pairs.
+    Assert: three BOs are loaded and encoded (1, 2, 3), not four, and each pair
+    still writes its supersede + insert.
+    """
     await worker.process({"id_bo_origem": 1, "id_bo_destino": 2})
     await worker.process({"id_bo_origem": 1, "id_bo_destino": 3})
 
@@ -103,7 +107,11 @@ async def test_encodes_each_bo_once_across_pairs(worker, session):
 
 
 async def test_reversed_pair_reuses_the_cache(worker):
-    """The CHECK(id_bo_origem < id_bo_destino) swap must not defeat the cache."""
+    """Arrange: the same pair first reversed, then in canonical order.
+    Act: process both.
+    Assert: only two BOs are encoded — the id_a/id_b swap must not defeat the
+    cache.
+    """
     await worker.process({"id_bo_origem": 3, "id_bo_destino": 1})
     await worker.process({"id_bo_origem": 1, "id_bo_destino": 3})
 
@@ -111,8 +119,11 @@ async def test_reversed_pair_reuses_the_cache(worker):
 
 
 async def test_cache_evicts_the_least_recently_used(worker, monkeypatch):
-    """With a 2-entry cache, BO 2 is evicted by BO 3 and encoded a second time —
-    eviction costs work, never a wrong score."""
+    """Arrange: a 2-entry profile cache and the pair sequence (1,2), (1,3), (1,2).
+    Act: process all three pairs.
+    Assert: BO 2 is evicted by BO 3 and encoded again — eviction costs work,
+    never a wrong score.
+    """
     monkeypatch.setattr(worker.cfg, "linkage_profile_cache_max", 2)
 
     for origem, destino in [(1, 2), (1, 3), (1, 2)]:
@@ -122,6 +133,10 @@ async def test_cache_evicts_the_least_recently_used(worker, monkeypatch):
 
 
 async def test_written_pair_is_ordered_and_scored(worker, session):
+    """Arrange: a pair sent with origin > destination and a 0.9 score.
+    Act: process it.
+    Assert: the insert stores the IDs in canonical order with that score.
+    """
     await worker.process({"id_bo_origem": 2, "id_bo_destino": 1})
 
     insert = session.writes[1][1]
@@ -130,8 +145,11 @@ async def test_written_pair_is_ordered_and_scored(worker, session):
 
 
 async def test_pair_without_embedding_is_skipped_and_not_cached(worker, session):
-    """A BO whose embedding is not ready yet must not be cached as a miss —
-    the next attempt has to re-query it."""
+    """Arrange: a pair whose destination BO has no embedding yet.
+    Act: process the same pair twice.
+    Assert: nothing is written, BO 1 is queried once, and the missing BO 99 is
+    queried again on the retry — a miss is never cached.
+    """
     await worker.process({"id_bo_origem": 1, "id_bo_destino": 99})
     await worker.process({"id_bo_origem": 1, "id_bo_destino": 99})
 
@@ -140,8 +158,11 @@ async def test_pair_without_embedding_is_skipped_and_not_cached(worker, session)
 
 
 def test_cos_matriz_casa_com_sklearn_inclusive_vetor_zero():
-    """O _sim_descricao deixou de chamar sklearn; a semântica tem que ficar
-    idêntica — inclusive a linha de norma zero, que não pode virar NaN."""
+    """Arrange: two random matrices with one zero-norm row.
+    Act: compute cosine similarity with the local _cos_matriz.
+    Assert: it matches sklearn and the zero row stays 0.0, never NaN — the
+    scoring path no longer calls sklearn but must keep its semantics.
+    """
     from sklearn.metrics.pairwise import cosine_similarity
 
     rng = np.random.default_rng(0)

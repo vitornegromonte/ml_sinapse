@@ -93,6 +93,11 @@ def _inserted(conn):
 
 
 async def test_batch_encodes_all_texts_in_one_call(worker, db, model_id):
+    """Arrange: two BOs with narratives in the fake session.
+    Act: process both in one batch.
+    Assert: one encode call for both texts, one UPDATE, and one batched INSERT
+    holding both BOs.
+    """
     errors = await worker.process_batch([{"boletim_id": 1}, {"boletim_id": 2}])
 
     assert errors == [None, None]
@@ -104,8 +109,11 @@ async def test_batch_encodes_all_texts_in_one_call(worker, db, model_id):
 
 
 async def test_batch_writes_a_repeated_bo_once(worker, db, model_id):
-    """Duas mensagens do mesmo BO no mesmo lote não podem virar duas linhas
-    current — o UPDATE único não supersede a linha que o próprio lote criou."""
+    """Arrange: two messages for the same BO in one batch.
+    Act: process the batch.
+    Assert: the text is encoded once and only one current row is inserted — the
+    single UPDATE cannot supersede a row the batch itself created.
+    """
     errors = await worker.process_batch([{"boletim_id": 1}, {"boletim_id": 1}])
 
     assert errors == [None, None]
@@ -114,6 +122,10 @@ async def test_batch_writes_a_repeated_bo_once(worker, db, model_id):
 
 
 async def test_bo_without_narrative_is_skipped_not_encoded(worker, db, model_id):
+    """Arrange: one BO with blank text and one with no narrative row.
+    Act: process them.
+    Assert: both are skipped without error, nothing is encoded, nothing inserted.
+    """
     db.narratives = {1: "  "}
 
     errors = await worker.process_batch([{"boletim_id": 1}, {"boletim_id": 3}])
@@ -124,6 +136,11 @@ async def test_bo_without_narrative_is_skipped_not_encoded(worker, db, model_id)
 
 
 async def test_bad_payload_fails_only_its_item(worker, db, model_id):
+    """Arrange: a batch with an invalid boletim_id followed by a valid one.
+    Act: process the batch.
+    Assert: the invalid item gets its own ValueError, the valid item succeeds
+    and is encoded.
+    """
     errors = await worker.process_batch([{"boletim_id": "abc"}, {"boletim_id": 1}])
 
     assert isinstance(errors[0], ValueError)
@@ -132,11 +149,20 @@ async def test_bad_payload_fails_only_its_item(worker, db, model_id):
 
 
 async def test_process_single_item_raises_the_batch_error(worker, db, model_id):
+    """Arrange: a single invalid payload.
+    Act: process it through the single-item path.
+    Assert: ValueError — the single-item path delegates to the batch and
+    re-raises its error.
+    """
     with pytest.raises(ValueError):
         await worker.process({"boletim_id": "abc"})
 
 
 async def test_encode_failure_is_reported_for_every_ready_item(worker, db, model_id):
+    """Arrange: an encoder that raises CUDA OOM, with two ready BOs.
+    Act: process the batch.
+    Assert: both items report the RuntimeError and nothing is inserted.
+    """
     worker._encoder.encode.side_effect = RuntimeError("cuda oom")
 
     errors = await worker.process_batch([{"boletim_id": 1}, {"boletim_id": 2}])

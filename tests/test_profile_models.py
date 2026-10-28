@@ -25,6 +25,11 @@ def _linha(modelo, **troca):
 
 
 def test_resumo_desconta_os_fixos_do_util_do_vllm():
+    """Arrange: embedding and linkage rows plus an OCR row using 0.9 util.
+    Act: build the routing summary.
+    Assert: the fixed models are subtracted, giving util ceilings of 0.96 for
+    one vLLM and 0.48 for two on the same card.
+    """
     linhas = [
         _linha("embedding"),
         _linha("linkage"),
@@ -40,10 +45,19 @@ def test_resumo_desconta_os_fixos_do_util_do_vllm():
 
 
 def test_resumo_nao_arrisca_um_roteamento_com_so_um_modelo():
+    """Arrange: a single vLLM row.
+    Act: build the routing summary.
+    Assert: it is empty — one model is not enough to recommend a split.
+    """
     assert _resumo([_linha("llm", util=0.9)]) == ""
 
 
 def test_tabela_marca_os_fixos_sem_util_e_mostra_mb():
+    """Arrange: one fixed-footprint model and one vLLM model.
+    Act: render the profile table.
+    Assert: MB values are shown, the fixed model has no util, the vLLM row
+    shows 0.90, and the footer is in MB.
+    """
     tabela = _tabela([_linha("embedding", modelo_mb=520), _linha("llm", util=0.9)])
 
     linhas = tabela.splitlines()
@@ -55,6 +69,10 @@ def test_tabela_marca_os_fixos_sem_util_e_mostra_mb():
 
 
 def test_rodar_um_pina_o_filho_na_gpu_pedida(monkeypatch):
+    """Arrange: a subprocess runner that records its environment.
+    Act: profile one worker on GPU 1.
+    Assert: CUDA_VISIBLE_DEVICES pins the child to 1 and the row reports GPU 1.
+    """
     chamada = {}
 
     def falso(comando, **kwargs):
@@ -72,6 +90,10 @@ def test_rodar_um_pina_o_filho_na_gpu_pedida(monkeypatch):
 
 
 def test_rodar_um_mostra_o_erro_do_filho(monkeypatch):
+    """Arrange: a subprocess that fails with CUDA out of memory.
+    Act: profile one worker.
+    Assert: SystemExit carries the child's error instead of a silent empty row.
+    """
     monkeypatch.setattr(
         profile_models.subprocess,
         "run",

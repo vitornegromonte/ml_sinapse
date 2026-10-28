@@ -7,7 +7,11 @@ from models.llm_model import LLMModel
 
 class TestLLMModelVllmOnly:
     def test_load_constructs_vllm_with_tuning_params(self):
-        """load repassa os parâmetros de tuning ao vLLM."""
+        """Arrange: an LLM model with explicit tuning parameters.
+        Act: load it with vLLM patched.
+        Assert: vLLM is constructed once with those parameters and kept on the
+        instance.
+        """
         with patch("vllm.LLM") as mock_vllm, patch("transformers.AutoTokenizer"):
             model = LLMModel(
                 "fake/model",
@@ -28,6 +32,10 @@ class TestLLMModelVllmOnly:
             assert model._llm is mock_vllm.return_value
 
     def test_load_omits_max_model_len_when_unset(self):
+        """Arrange: an LLM model with no max_model_len configured.
+        Act: load it with vLLM patched.
+        Assert: max_model_len is not passed, so vLLM keeps its native context.
+        """
         with patch("vllm.LLM") as mock_vllm, patch("transformers.AutoTokenizer"):
             model = LLMModel("fake/model")
 
@@ -36,11 +44,18 @@ class TestLLMModelVllmOnly:
             assert "max_model_len" not in mock_vllm.call_args.kwargs
 
     def test_constructor_no_longer_accepts_engine(self):
-        """O dispatch de engine foi removido: vLLM é o único caminho."""
+        """Arrange: constructor arguments that still name an old engine.
+        Act: build the LLM model.
+        Assert: TypeError — vLLM is the only path now.
+        """
         with pytest.raises(TypeError):
             LLMModel("fake/model", engine="transformers")
 
     def test_predict_returns_text_and_tokens(self):
+        """Arrange: a loaded model whose vLLM generate returns one output.
+        Act: predict from a prompt.
+        Assert: the text is mapped into the worker's result shape with tokens.
+        """
         model = LLMModel("fake/model")
         model._llm = MagicMock()
         output = MagicMock()

@@ -14,3 +14,7 @@ Este diretório contém os ADRs (_Architecture Decision Records_) do subsistema 
 | [ADR-008](./adr-008-mlflow-registry.md) | MLflow para experimentos e registry | ✅ Aceito |
 | [ADR-009](./adr-009-model-wrappers.md) | Wrappers de modelo modulares (BaseModelWrapper) | ✅ Aceito |
 | [ADR-010](./adr-010-bentoml-serving.md) | Serving com BentoML | ✅ Aceito |
+
+## Outros documentos
+
+- [Testing](./testing.md) — organização da suíte e a convenção Arrange, Act, Assert.

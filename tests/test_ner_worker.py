@@ -41,12 +41,18 @@ def ner_payload():
 
 class TestNerWorker:
     async def test_process_runs_nlp_on_text(self, worker, mock_nlp, ner_payload):
-        """process deve chamar o pipeline spaCy com o texto do payload."""
+        """Arrange: a NER worker with an injected spaCy pipeline.
+        Act: process a payload.
+        Assert: the pipeline is called once with the payload text.
+        """
         await worker.process(ner_payload)
         mock_nlp.assert_called_once_with(ner_payload["text"])
 
     async def test_process_extracts_entity_fields(self, worker, mock_nlp, ner_payload, caplog):
-        """process deve extrair text/label/start/end de cada entidade e logar o resultado."""
+        """Arrange: a pipeline returning one PESSOA entity.
+        Act: process a payload with info logging captured.
+        Assert: the entity text and label reach the log.
+        """
         import logging
         with caplog.at_level(logging.INFO):
             await worker.process(ner_payload)
@@ -55,12 +61,19 @@ class TestNerWorker:
         assert "PESSOA" in caplog.text
 
     async def test_process_does_not_touch_redis(self, worker, mock_redis, ner_payload):
-        """NerWorker.process não publica nada hoje (ver docstring do módulo) — só loga."""
+        """Arrange: a worker with a mocked Redis client.
+        Act: process a payload.
+        Assert: nothing is published — this worker only logs (mock NER, ADR-005).
+        """
         await worker.process(ner_payload)
         mock_redis.xadd.assert_not_called()
 
     async def test_model_loaded_lazily_from_local_path(self, mock_redis, ner_payload):
-        """Sem ner_model_uri configurado, deve sincronizar do MinIO e carregar via spacy.load."""
+        """Arrange: no ner_model_uri, with spaCy and MinIO sync patched.
+        Act: process the first payload.
+        Assert: the model is synced from its configured bucket/prefix, then
+        loaded with spacy.load from the local path.
+        """
         with (
             patch("workers.ner_worker.spacy") as mock_spacy,
             patch("workers.ner_worker.sync_if_missing") as mock_sync,
@@ -85,7 +98,10 @@ class TestNerWorker:
             assert w._nlp is not None
 
     async def test_model_load_skips_minio_sync_when_prefix_unset(self, mock_redis, ner_payload):
-        """Com ner_model_minio_prefix vazio, não deve tentar sincronizar do MinIO."""
+        """Arrange: config with an empty ner_model_minio_prefix.
+        Act: process the first payload.
+        Assert: MinIO sync is skipped and spacy.load uses the local path.
+        """
         cfg = Settings(ner_model_minio_prefix="")
         with (
             patch("workers.ner_worker.spacy") as mock_spacy,
@@ -102,7 +118,10 @@ class TestNerWorker:
             mock_spacy.load.assert_called_once_with(cfg.ner_model_path)
 
     async def test_model_loaded_lazily_from_mlflow_when_uri_set(self, mock_redis, ner_payload):
-        """Com ner_model_uri configurado, deve carregar via mlflow.spacy.load_model(uri)."""
+        """Arrange: config with an MLflow model URI, load_model patched.
+        Act: process the first payload.
+        Assert: the model is loaded from that URI instead of MinIO.
+        """
         cfg = Settings(ner_model_uri="models:/ner-model/1")
         with patch("mlflow.spacy.load_model") as mock_load:
             mock_load.return_value = MagicMock(side_effect=lambda t: MagicMock(ents=[]))

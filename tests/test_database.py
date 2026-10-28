@@ -7,6 +7,10 @@ from services.database import create_db_engine
 
 
 def test_engine_enables_pre_ping_and_a_bounded_connect_timeout():
+    """Arrange: a Settings pointing at Postgres, with engine creation patched.
+    Act: create the database engine.
+    Assert: pre-ping is on, the connect timeout is 30 s, and echo stays off.
+    """
     cfg = Settings(ml_database_url="postgresql+asyncpg://u:p@db:5432/d")
 
     with patch("services.database.create_async_engine") as create:

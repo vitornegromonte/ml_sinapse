@@ -8,9 +8,11 @@ REPO = Path(__file__).resolve().parent.parent
 
 
 def test_importing_run_worker_loads_no_worker_module():
-    """Antes, importar run_worker carregava os seis workers — subir o container
-    de OCR custava torch/spaCy/sklearn dos outros cinco, e faltar uma dep
-    opcional em qualquer um deles derrubava todos."""
+    """Arrange: a fresh interpreter that imports run_worker and lists workers.*
+    Act: run the import in a subprocess.
+    Assert: it exits cleanly and imports no worker module — starting the OCR
+    container must not pay for torch/spaCy/sklearn from the other five.
+    """
     out = subprocess.run(
         [
             sys.executable,
@@ -29,6 +31,10 @@ def test_importing_run_worker_loads_no_worker_module():
 
 
 def test_resolve_returns_the_class_by_name():
+    """Arrange: the worker registry imported from run_worker.
+    Act: resolve the "cluster" worker by name.
+    Assert: the registry maps it to ClusterWorker and resolve returns that class.
+    """
     import run_worker
 
     assert run_worker.WORKERS["cluster"] == "workers.cluster_worker:ClusterWorker"

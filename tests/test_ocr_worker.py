@@ -32,7 +32,11 @@ def worker(mock_redis, mock_model):
 
 class TestOcrWorker:
     async def test_process_success(self, worker, mock_redis, mock_model, ocr_payload):
-        """process deve carregar imagem, preprocessar, predizer e publicar resultado."""
+        """Arrange: a worker with image loading and skew correction patched.
+        Act: process an image payload.
+        Assert: predict gets the corrected image and configured max tokens, and
+        the OCR text is published to the results stream.
+        """
         with (
             patch("workers.ocr_worker.ImageLoader.load") as mock_load,
             patch("workers.ocr_worker.SkewCorrector.correct") as mock_skew,
@@ -58,12 +62,18 @@ class TestOcrWorker:
             assert call_args[1]["text"] == "texto extraído via OCR"
 
     async def test_process_no_image_raises(self, worker):
-        """process com payload sem fonte de imagem deve levantar ValueError."""
+        """Arrange: a payload with no image or PDF source.
+        Act: process it.
+        Assert: ValueError naming image_url.
+        """
         with pytest.raises(ValueError, match="image_url"):
             await worker.process({"document_id": "no-image"})
 
     async def test_unload_on_shutdown(self, mock_model):
-        """run deve chamar unload do modelo no finally."""
+        """Arrange: a worker with an injected model and run() forced to raise.
+        Act: run the worker.
+        Assert: the exception propagates and the model is unloaded in finally.
+        """
         with (
             patch("workers.ocr_worker.create_model") as mock_create,
             patch("workers.ocr_worker.BaseWorker.run") as mock_run,
@@ -81,7 +91,12 @@ class TestOcrWorker:
             mock_model.unload.assert_called_once()
 
     async def test_process_pdf_combines_text_and_image_chunks(self, worker, mock_redis, mock_model):
-        """process com pdf_bucket/pdf_key deve baixar, dividir em chunks e OCRar as imagens."""
+        """Arrange: a PDF with one text chunk and one scanned-image chunk.
+        Act: process the PDF payload.
+        Assert: the PDF is downloaded, only the image chunk is OCRed, and the
+        published text has the text layer, the OCR output, and the scanned-page
+        marker in order.
+        """
         async def fake_chunks(pdf_path):
             yield ("text", "texto direto da página 1", "")
             yield ("image", object(), "[Página Escaneada Integralmente]")
@@ -113,7 +128,10 @@ class TestOcrWorker:
             assert "[Página Escaneada Integralmente]" in published_text
 
     async def test_process_pdf_rejects_over_page_cap(self, worker):
-        """PDF com mais páginas que ocr_max_pdf_pages deve levantar antes de extrair."""
+        """Arrange: a 999-page PDF with the cap at 200.
+        Act: process it.
+        Assert: ValueError naming 999 pages and extraction is never attempted.
+        """
         with (
             patch("workers.ocr_worker.StorageService") as mock_storage_cls,
             patch.object(worker._pdf_extractor, "page_count", return_value=999),
@@ -133,7 +151,11 @@ class TestOcrWorker:
             mock_extract.assert_not_called()  # rejected before paying for extraction
 
     async def test_process_pdf_takes_priority_over_image_fields(self, worker, mock_redis, mock_model):
-        """Se ambos pdf_* e image_* vierem no payload, o caminho PDF vence."""
+        """Arrange: a payload carrying both pdf_* and image_url.
+        Act: process it.
+        Assert: the PDF path wins — it is downloaded and the image URL is
+        ignored.
+        """
         async def fake_chunks(pdf_path):
             yield ("text", "só texto, sem imagens", "")
 
@@ -156,7 +178,10 @@ class TestOcrWorker:
             mock_model.predict.assert_not_called()  # no image chunks in this fake PDF
 
     async def test_model_loaded_lazily(self, mock_redis, mock_model):
-        """process deve carregar modelo automaticamente se None."""
+        """Arrange: a new worker whose model and storage are still None.
+        Act: process the first image payload.
+        Assert: create_model builds the model and predict runs once.
+        """
         with (
             patch("workers.ocr_worker.create_model") as mock_create,
             patch("workers.ocr_worker.ImageLoader.load") as mock_load,
@@ -184,9 +209,12 @@ class TestOcrWorker:
     async def test_save_failure_fails_before_publishing(
         self, worker, mock_redis, mock_model, ocr_payload
     ):
-        """MinIO fora do ar: a task falha (retry/DLQ) e nada é publicado. Antes
-        ela era acked com o texto publicado em results mas nunca gravado no
-        bronze — gap permanente e silencioso."""
+        """Arrange: a storage service whose bronze save fails.
+        Act: process one image payload.
+        Assert: the error propagates and nothing is published — before, the task
+        was acked with the text in results but never in bronze, a silent
+        permanent gap.
+        """
         with (
             patch("workers.ocr_worker.ImageLoader.load") as mock_load,
             patch("workers.ocr_worker.SkewCorrector.correct") as mock_skew,

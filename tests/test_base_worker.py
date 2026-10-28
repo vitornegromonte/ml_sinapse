@@ -46,8 +46,11 @@ def _make_redis_with_retry_counter():
 
 class TestProcessMessageRetry:
     async def test_failed_message_is_not_acked_before_exhausting_retries(self):
-        """A message that fails but hasn't hit max_retries must stay pending
-        (never acked) — an acked Streams message can never be redelivered."""
+        """Arrange: a worker failing the first two attempts, max_retries=3.
+        Act: process the same message three times.
+        Assert: it is never acked before the successful third attempt — an acked
+        Streams message can never be redelivered.
+        """
         w = _FailNTimesWorker(fail_times=2, stream="test:stream")
         w.cfg.max_retries = 3
         w.redis, _ = _make_redis_with_retry_counter()
@@ -63,8 +66,11 @@ class TestProcessMessageRetry:
         assert w.attempts == 3
 
     async def test_exhausted_retries_dead_letters_and_acks(self):
-        """Once max_retries is hit, the message IS dead-lettered and acked
-        (removed from the pending list) — this path is unchanged."""
+        """Arrange: a worker that always fails, max_retries=2.
+        Act: process the same message twice.
+        Assert: on the second attempt it is written to the DLQ and acked,
+        removing it from the pending list.
+        """
         w = _FailNTimesWorker(fail_times=99, stream="test:stream")
         w.cfg.max_retries = 2
         w.redis, _ = _make_redis_with_retry_counter()
@@ -79,8 +85,12 @@ class TestProcessMessageRetry:
 
 class TestReclaimStale:
     async def test_calls_xautoclaim_with_correct_kwargs_and_loops_to_completion(self):
-        """Locks in the real redis-py xautoclaim signature (start_id, not
-        start) and confirms the sweep loops until the cursor wraps to 0-0."""
+        """Arrange: a Redis client whose xautoclaim returns one message and then
+        the 0-0 cursor, with no live lease.
+        Act: reclaim stale messages.
+        Assert: two calls with min_idle_time and the real start_id keyword (not
+        start), and the claimed message is processed.
+        """
         w = _FailNTimesWorker(fail_times=99, stream="test:stream")
         w.cfg.claim_idle_ms = 30000
         w.cfg.batch_size = 1
@@ -105,7 +115,10 @@ class TestReclaimStale:
         assert w.attempts == 1  # the claimed message was fed through _process_message
 
     async def test_reclaim_errors_are_caught_not_raised(self):
-        """A Redis error during reclaim shouldn't crash the worker's main loop."""
+        """Arrange: a Redis client whose xautoclaim raises a connection error.
+        Act: reclaim stale messages.
+        Assert: it does not raise, so the worker's main loop keeps running.
+        """
         w = _FailNTimesWorker(fail_times=0, stream="test:stream")
         w.redis = AsyncMock()
         w.redis.xautoclaim.side_effect = RuntimeError("connection lost")
@@ -113,8 +126,11 @@ class TestReclaimStale:
         await w._reclaim_stale()  # must not raise
 
     async def test_does_not_reclaim_a_message_whose_lease_is_alive(self):
-        """A message another replica is still processing (heartbeat lease
-        alive) must not be stolen — that duplication was the bug."""
+        """Arrange: xautoclaim returns a message whose heartbeat lease exists.
+        Act: reclaim stale messages.
+        Assert: it is not processed — another replica still owns it, and that
+        duplication was the bug.
+        """
         w = _FailNTimesWorker(fail_times=0, stream="test:stream")
         w.redis = AsyncMock()
         w.redis.exists = AsyncMock(return_value=1)  # lease still held
@@ -150,6 +166,11 @@ class _BatchWorker(BaseWorker):
 
 class TestProcessMessagesBatch:
     async def test_one_batch_call_and_one_ack_per_message(self):
+        """Arrange: a batch worker and two messages.
+        Act: process the messages.
+        Assert: one process_batch call with both items, one ack per message, and
+        one lease set/deleted per message.
+        """
         w = _BatchWorker(stream="test:stream")
         w.cfg.max_retries = 3
         w.redis, _ = _make_redis_with_retry_counter()
@@ -163,6 +184,11 @@ class TestProcessMessagesBatch:
         assert w.redis.delete.call_count == 2
 
     async def test_failed_item_is_settled_alone_after_the_batch_call(self):
+        """Arrange: a batch worker where item 2 fails and items 1 and 3 succeed.
+        Act: process all three.
+        Assert: only 1 and 3 are acked and item 2 alone gets its retry counter
+        incremented.
+        """
         w = _BatchWorker(fail_items={2}, stream="test:stream")
         w.cfg.max_retries = 3
         w.redis, _ = _make_redis_with_retry_counter()
@@ -179,8 +205,11 @@ class TestProcessMessagesBatch:
         )
 
     async def test_batch_level_error_fails_every_item(self):
-        """CUDA OOM no generate() não diz nada sobre cada item: todos
-        seguem o retry normal, nenhum é acked."""
+        """Arrange: a batch worker whose process_batch raises CUDA OOM.
+        Act: process two messages.
+        Assert: both retry counters increment and neither is acked — the error
+        says nothing about each item.
+        """
         w = _BatchWorker(stream="test:stream")
         w.cfg.max_retries = 3
         w.redis, _ = _make_redis_with_retry_counter()
@@ -196,6 +225,10 @@ class TestProcessMessagesBatch:
         assert w.redis.xack.call_count == 0
 
     async def test_default_hook_runs_process_per_item(self):
+        """Arrange: a serial worker (no batch support) and two messages.
+        Act: process the messages.
+        Assert: process runs once per item and both are acked.
+        """
         w = _FailNTimesWorker(fail_times=0, stream="test:stream")
         w.redis, _ = _make_redis_with_retry_counter()
 
@@ -207,11 +240,19 @@ class TestProcessMessagesBatch:
 
 class TestBatchCount:
     async def test_serial_worker_reads_one_message_even_with_batch_size(self):
+        """Arrange: a serial worker with batch_size=8 configured.
+        Act: ask how many messages to read.
+        Assert: one — serial workers ignore batch_size.
+        """
         w = _FailNTimesWorker(fail_times=0, stream="test:stream")
         w.cfg.batch_size = 8
         assert w._batch_count() == 1
 
     async def test_batching_worker_reads_batch_size(self):
+        """Arrange: a batch worker with batch_size=8 configured.
+        Act: ask how many messages to read.
+        Assert: eight — batch workers read the full batch.
+        """
         w = _BatchWorker(stream="test:stream")
         w.cfg.batch_size = 8
         assert w._batch_count() == 8

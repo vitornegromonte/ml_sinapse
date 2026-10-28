@@ -40,7 +40,10 @@ def _make_mlflow_loaded(model_cls_name: str, mock_tensors):
 
 class TestMlflowOcrModel:
     def test_architecture_qwen(self, mock_tensors):
-        """Modelo Qwen deve ser detectado como arquitetura 'qwen'."""
+        """Arrange: an MLflow model whose class is Qwen.
+        Act: load it and ask for its architecture.
+        Assert: "qwen".
+        """
         loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):
@@ -49,7 +52,10 @@ class TestMlflowOcrModel:
             assert model._model_architecture() == "qwen"
 
     def test_architecture_glm(self, mock_tensors):
-        """Modelo GLM deve ser detectado como arquitetura 'glm'."""
+        """Arrange: an MLflow model whose class is GLM.
+        Act: load it and ask for its architecture.
+        Assert: "glm".
+        """
         loaded = _make_mlflow_loaded("ChatGLMModel", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):
@@ -58,7 +64,10 @@ class TestMlflowOcrModel:
             assert model._model_architecture() == "glm"
 
     def test_architecture_defaults_to_qwen(self, mock_tensors):
-        """Arquitetura desconhecida deve cair no fallback qwen."""
+        """Arrange: an MLflow model with an unrecognized class name.
+        Act: load it and ask for its architecture.
+        Assert: it falls back to "qwen".
+        """
         loaded = _make_mlflow_loaded("UnknownArchitecture", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):
@@ -67,7 +76,10 @@ class TestMlflowOcrModel:
             assert model._model_architecture() == "qwen"
 
     def test_predict_qwen_returns_string(self, mock_tensors):
-        """Predict com arquitetura qwen deve retornar string."""
+        """Arrange: a loaded Qwen MLflow model with vision processing patched.
+        Act: predict from an image.
+        Assert: a string with the decoded model output.
+        """
         loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
 
         with (
@@ -86,7 +98,10 @@ class TestMlflowOcrModel:
             assert result == "mlflow result"
 
     def test_predict_glm_returns_string(self, mock_tensors):
-        """Predict com arquitetura glm deve retornar string."""
+        """Arrange: a loaded GLM MLflow model.
+        Act: predict from an image.
+        Assert: a string is returned.
+        """
         loaded = _make_mlflow_loaded("ChatGLMModel", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):
@@ -99,9 +114,12 @@ class TestMlflowOcrModel:
             assert isinstance(result, str)
 
     def test_predict_qwen_prompt_override(self, mock_tensors):
-        """prompt= substitui o USER_PROMPT, como no VllmChatOcrModel — o
-        contrato de AbstractOcrModel.predict não pode divergir por backend
-        (antes, passar prompt aqui era TypeError)."""
+        """Arrange: a loaded Qwen model and a custom prompt.
+        Act: predict with prompt="PROMPT DO CHAMADOR".
+        Assert: the custom prompt replaces USER_PROMPT in the chat template —
+        the AbstractOcrModel contract cannot differ per backend (this used to
+        raise TypeError).
+        """
         loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
 
         with (
@@ -120,7 +138,10 @@ class TestMlflowOcrModel:
             assert messages[1]["content"][1]["text"] == "PROMPT DO CHAMADOR"
 
     def test_predict_glm_prompt_override(self, mock_tensors):
-        """Idem para a arquitetura glm."""
+        """Arrange: a loaded GLM model and a custom prompt.
+        Act: predict with prompt="PROMPT DO CHAMADOR".
+        Assert: the custom prompt is used in the GLM message.
+        """
         loaded = _make_mlflow_loaded("ChatGLMModel", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):
@@ -135,21 +156,30 @@ class TestMlflowOcrModel:
             assert messages[0]["content"][1]["text"] == "PROMPT DO CHAMADOR"
 
     def test_device_property_reports_configured_gpu(self):
-        """Sem modelo carregado, cai no gpu_device configurado."""
+        """Arrange: an unloaded model configured for GPU 1, CUDA available.
+        Act: read the device.
+        Assert: "cuda:1" from the configured gpu_device.
+        """
         model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=1)
         model._model = None
         with patch("torch.cuda.is_available", return_value=True):
             assert model.device == "cuda:1"
 
     def test_device_property_cpu_fallback(self):
-        """Sem CUDA, cai em cpu."""
+        """Arrange: an unloaded model configured for GPU 1, CUDA unavailable.
+        Act: read the device.
+        Assert: it falls back to "cpu".
+        """
         model = MlflowOcrModel("models:/ocr-model/latest", gpu_device=1)
         model._model = None
         with patch("torch.cuda.is_available", return_value=False):
             assert model.device == "cpu"
 
     def test_unload_clears_model(self, mock_tensors):
-        """unload deve limpar modelo e processor."""
+        """Arrange: a loaded Qwen MLflow model with model and processor set.
+        Act: unload it.
+        Assert: both references are cleared.
+        """
         loaded = _make_mlflow_loaded("Qwen2_5_VLForConditionalGeneration", mock_tensors)
 
         with patch("mlflow.transformers.load_model", return_value=loaded):

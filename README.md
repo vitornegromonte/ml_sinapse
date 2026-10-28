@@ -77,7 +77,8 @@ python -m pytest -q          # mock-based, no GPU/DB/Redis needed
 
 `requirements-test.txt` is the CPU-only subset used by CI
 (`.github/workflows/tests.yml`); `requirements.txt` is only needed to actually
-run a worker.
+run a worker. How the suite is organised and written — Arrange, Act, Assert —
+is in [`docs/testing.md`](docs/testing.md).
 
 Pipeline drivers in `scripts/` (run from repo root):
 
