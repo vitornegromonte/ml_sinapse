@@ -42,3 +42,17 @@ class LinkageTask(BaseModel):
     pipeline_run_id: str | None = Field(
         default=None, description="Correlation id of the run that produced the pair"
     )
+
+
+class ScoringTask(BaseModel):
+    boletim_id: int = Field(description="silver.boletim.id_infopol to score")
+    ato_infracional: str = Field(
+        description="Natureza whose weights/penalty apply (see occurrence_scoring)"
+    )
+    # Which maturity features are present. Deriving them from the BO text is a
+    # separate step; this task only scores what it is told. A missing feature
+    # counts as absent, so extra or unknown flags are harmless.
+    features: dict[str, bool] = Field(default_factory=dict)
+    pipeline_run_id: str | None = Field(
+        default=None, description="Correlation id of the run that produced the BO"
+    )

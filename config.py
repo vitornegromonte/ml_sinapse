@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     embedding_stream: str = "embedding:tasks"
     linkage_stream: str = "linkage:tasks"
     cluster_stream: str = "cluster:tasks"
+    scoring_stream: str = "scoring:tasks"
+    # Weights per ato infracional for the BO maturity score. Data, not code:
+    # recalibrating a nature is a file change, not a deploy of new logic (the
+    # two penalty rules are the exception — they live in occurrence_scoring.py).
+    scoring_weights_path: str = "artifacts/bo_scoring_weights_v1.json"
+    scoring_result_stream_maxlen: int = 50000
     dead_letter_suffix: str = ":dead"
     # Bound the dead-letter stream: without this it grows forever (every
     # permanently failing message is appended and nothing ever reads it).
