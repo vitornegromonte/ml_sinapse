@@ -150,5 +150,16 @@ services:
       # networkx/SQL puro sobre gold.bo_relacionado já calculado — sem
       # encoder, sem classificador, sem GPU (ver workers/cluster_worker.py).
 
+  scoring-worker:
+    build: .
+    container_name: ml_sinapse_scoring_worker
+    command: python run_worker.py scoring
+    environment:
+      # Redis only: the score is arithmetic over the task payload (weights
+      # baked into the image at /app/artifacts). No DB/MinIO creds, no GPU —
+      # BaseWorker builds an unused engine from the default DSN, it never
+      # connects. See workers/scoring_worker.py.
+      - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+
 volumes:
   model_cache:

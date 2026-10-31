@@ -1,0 +1,190 @@
+{
+  "version": "v1",
+  "natures": {
+    "AMEACA": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "CRIME_AMBIENTAL": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "DANO_QUALIFICADO": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "EMBRIAGUEZ_AO_VOLANTE": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "ESTELIONATO": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "ESTUPRO_DE_VULNERAVEL": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "EXTORSAO": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "EXTORSAO_MEDIANTE_SEQUESTRO": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "FALSIDADE_IDEOLOGICA": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "FURTO": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "HOMICIDIO": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "HOMICIDIO_CULPOSO_TRANSITO": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "IMPORTUNACAO_SEXUAL": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "INVASAO_DISPOSITIVO_INFORMATICO": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "LATROCINIO": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "LAVAGEM_DE_DINHEIRO": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "LESAO_CORPORAL": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "MAUS_TRATOS_ANIMAIS": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "ORGANIZACAO_CRIMINOSA": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "PORTE_ILEGAL_ARMA": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "RECEPTACAO": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "RESISTENCIA_DESOBEDIENCIA": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "ROUBO": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "ROUBO_DE_CARGA": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "ROUBO_DE_VEICULO": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "SEQUESTRO_E_CARCERE_PRIVADO": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "STALKING_PERSEGUICAO": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "TRAFICO_DROGAS": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "USO_DOCUMENTO_FALSO": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "VIOLENCIA_DOMESTICA": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    }
+  }
+}

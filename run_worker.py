@@ -25,6 +25,7 @@ WORKERS = {
     "embedding": "workers.embedding_worker:EmbeddingWorker",
     "linkage": "workers.linkage_scoring_worker:LinkageScoringWorker",
     "cluster": "workers.cluster_worker:ClusterWorker",
+    "scoring": "workers.scoring_worker:ScoringWorker",
 }
 
 

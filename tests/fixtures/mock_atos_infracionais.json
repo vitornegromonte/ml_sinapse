@@ -1,0 +1,3122 @@
+[
+  {
+    "id_caso": "MOCK-ATO-001",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "address": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-002",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": false,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-003",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-004",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-005",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "address": true,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-006",
+    "ato_infracional": "HOMICIDIO",
+    "descricao_ato": "Homicídio consumado ou tentado",
+    "pesos": {
+      "victim": 0.5,
+      "suspect": 0.3,
+      "address": 0.1,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": true,
+      "address": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-007",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": true,
+      "address": true,
+      "suspect": true,
+      "cameras_or_witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-008",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": false,
+      "address": false,
+      "suspect": false,
+      "cameras_or_witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-009",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": true,
+      "address": true,
+      "suspect": false,
+      "cameras_or_witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-010",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": true,
+      "address": false,
+      "suspect": false,
+      "cameras_or_witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-011",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": true,
+      "address": false,
+      "suspect": true,
+      "cameras_or_witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-012",
+    "ato_infracional": "FURTO",
+    "descricao_ato": "Subtração de coisa alheia móvel sem violência",
+    "pesos": {
+      "stolen_items": 0.4,
+      "address": 0.2,
+      "suspect": 0.2,
+      "cameras_or_witnesses": 0.2
+    },
+    "features": {
+      "stolen_items": false,
+      "address": true,
+      "suspect": true,
+      "cameras_or_witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-013",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "stolen_items": true,
+      "weapon_seized": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-014",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": false,
+      "stolen_items": false,
+      "weapon_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-015",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "stolen_items": false,
+      "weapon_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-016",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "stolen_items": false,
+      "weapon_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-017",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "stolen_items": true,
+      "weapon_seized": false,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-018",
+    "ato_infracional": "ROUBO",
+    "descricao_ato": "Subtração de coisa alheia mediante violência ou grave ameaça",
+    "pesos": {
+      "victim": 0.3,
+      "suspect": 0.3,
+      "stolen_items": 0.2,
+      "weapon_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": true,
+      "stolen_items": true,
+      "weapon_seized": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-019",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": true,
+      "victim": true,
+      "suspect": true,
+      "address": true,
+      "cameras_or_tracking": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-020",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": false,
+      "victim": false,
+      "suspect": false,
+      "address": false,
+      "cameras_or_tracking": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-021",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": true,
+      "victim": true,
+      "suspect": false,
+      "address": false,
+      "cameras_or_tracking": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-022",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": true,
+      "victim": false,
+      "suspect": false,
+      "address": false,
+      "cameras_or_tracking": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-023",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": true,
+      "victim": false,
+      "suspect": true,
+      "address": false,
+      "cameras_or_tracking": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-024",
+    "ato_infracional": "ROUBO_DE_VEICULO",
+    "descricao_ato": "Roubo específico de automóveis ou motocicletas",
+    "pesos": {
+      "vehicle_details": 0.35,
+      "victim": 0.25,
+      "suspect": 0.2,
+      "address": 0.1,
+      "cameras_or_tracking": 0.1
+    },
+    "features": {
+      "vehicle_details": false,
+      "victim": true,
+      "suspect": true,
+      "address": true,
+      "cameras_or_tracking": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-025",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": true,
+      "victim_driver": true,
+      "suspect": true,
+      "vehicle_recovered": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-026",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": false,
+      "victim_driver": false,
+      "suspect": false,
+      "vehicle_recovered": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-027",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": true,
+      "victim_driver": true,
+      "suspect": false,
+      "vehicle_recovered": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-028",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": true,
+      "victim_driver": false,
+      "suspect": false,
+      "vehicle_recovered": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-029",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": true,
+      "victim_driver": false,
+      "suspect": true,
+      "vehicle_recovered": false,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-030",
+    "ato_infracional": "ROUBO_DE_CARGA",
+    "descricao_ato": "Subtração violenta de carga em transporte",
+    "pesos": {
+      "cargo_manifest": 0.3,
+      "victim_driver": 0.25,
+      "suspect": 0.2,
+      "vehicle_recovered": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "cargo_manifest": false,
+      "victim_driver": true,
+      "suspect": true,
+      "vehicle_recovered": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-031",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": true,
+      "stolen_items": true,
+      "suspect": true,
+      "address": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-032",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": false,
+      "stolen_items": false,
+      "suspect": false,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-033",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": true,
+      "stolen_items": true,
+      "suspect": false,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-034",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": true,
+      "stolen_items": false,
+      "suspect": false,
+      "address": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-035",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": true,
+      "stolen_items": false,
+      "suspect": true,
+      "address": false,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-036",
+    "ato_infracional": "LATROCINIO",
+    "descricao_ato": "Roubo seguido de morte da vítima",
+    "pesos": {
+      "victim_fatal": 0.45,
+      "stolen_items": 0.25,
+      "suspect": 0.15,
+      "address": 0.1,
+      "witnesses": 0.05
+    },
+    "features": {
+      "victim_fatal": false,
+      "stolen_items": true,
+      "suspect": true,
+      "address": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-037",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_report": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-038",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "medical_report": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-039",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_report": true,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-040",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_report": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-041",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_report": false,
+      "suspect": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-042",
+    "ato_infracional": "LESAO_CORPORAL",
+    "descricao_ato": "Ofensa à integridade corporal ou saúde de outrem",
+    "pesos": {
+      "victim": 0.4,
+      "medical_report": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "medical_report": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-043",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "protective_measures_requested": true,
+      "witnesses": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-044",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": false,
+      "protective_measures_requested": false,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-045",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "protective_measures_requested": false,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-046",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "protective_measures_requested": false,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-047",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "protective_measures_requested": true,
+      "witnesses": false,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-048",
+    "ato_infracional": "VIOLENCIA_DOMESTICA",
+    "descricao_ato": "Violência física, psicológica ou patrimonial no âmbito doméstico",
+    "pesos": {
+      "victim": 0.35,
+      "suspect": 0.3,
+      "protective_measures_requested": 0.15,
+      "witnesses": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": true,
+      "protective_measures_requested": true,
+      "witnesses": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-049",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": true,
+      "suspect_arrested": true,
+      "packaging_or_scales": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-050",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": false,
+      "suspect_arrested": false,
+      "packaging_or_scales": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-051",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": true,
+      "suspect_arrested": true,
+      "packaging_or_scales": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-052",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": true,
+      "suspect_arrested": false,
+      "packaging_or_scales": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-053",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": true,
+      "suspect_arrested": false,
+      "packaging_or_scales": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-054",
+    "ato_infracional": "TRAFICO_DROGAS",
+    "descricao_ato": "Venda, transporte ou guarda de substâncias entorpecentes",
+    "pesos": {
+      "narcotics_seized": 0.4,
+      "suspect_arrested": 0.3,
+      "packaging_or_scales": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "narcotics_seized": false,
+      "suspect_arrested": true,
+      "packaging_or_scales": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-055",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": true,
+      "suspect": true,
+      "ballistics_laudo": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-056",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": false,
+      "suspect": false,
+      "ballistics_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-057",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": true,
+      "suspect": true,
+      "ballistics_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-058",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": true,
+      "suspect": false,
+      "ballistics_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-059",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": true,
+      "suspect": false,
+      "ballistics_laudo": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-060",
+    "ato_infracional": "PORTE_ILEGAL_ARMA",
+    "descricao_ato": "Portar ou possuir arma de fogo sem autorização legal",
+    "pesos": {
+      "firearm_seized": 0.5,
+      "suspect": 0.3,
+      "ballistics_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "firearm_seized": false,
+      "suspect": true,
+      "ballistics_laudo": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-061",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": true,
+      "victim": true,
+      "suspect_identity": true,
+      "bank_or_pix_data": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-062",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": false,
+      "victim": false,
+      "suspect_identity": false,
+      "bank_or_pix_data": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-063",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": true,
+      "victim": true,
+      "suspect_identity": false,
+      "bank_or_pix_data": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-064",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": true,
+      "victim": false,
+      "suspect_identity": false,
+      "bank_or_pix_data": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-065",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": true,
+      "victim": false,
+      "suspect_identity": true,
+      "bank_or_pix_data": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-066",
+    "ato_infracional": "ESTELIONATO",
+    "descricao_ato": "Obtenção de vantagem ilícita induzindo alguém em erro",
+    "pesos": {
+      "financial_loss_proof": 0.35,
+      "victim": 0.25,
+      "suspect_identity": 0.2,
+      "bank_or_pix_data": 0.2
+    },
+    "features": {
+      "financial_loss_proof": false,
+      "victim": true,
+      "suspect_identity": true,
+      "bank_or_pix_data": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-067",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": true,
+      "suspect_in_possession": true,
+      "original_bo_linked": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-068",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": false,
+      "suspect_in_possession": false,
+      "original_bo_linked": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-069",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": true,
+      "suspect_in_possession": true,
+      "original_bo_linked": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-070",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": true,
+      "suspect_in_possession": false,
+      "original_bo_linked": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-071",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": true,
+      "suspect_in_possession": false,
+      "original_bo_linked": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-072",
+    "ato_infracional": "RECEPTACAO",
+    "descricao_ato": "Adquirir ou conduzir produto de crime sabendo ser ilícito",
+    "pesos": {
+      "stolen_object_recovered": 0.4,
+      "suspect_in_possession": 0.3,
+      "original_bo_linked": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "stolen_object_recovered": false,
+      "suspect_in_possession": true,
+      "original_bo_linked": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-073",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "location_cativeiro": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-074",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "location_cativeiro": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-075",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "location_cativeiro": true,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-076",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "location_cativeiro": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-077",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "location_cativeiro": false,
+      "suspect": true,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-078",
+    "ato_infracional": "SEQUESTRO_E_CARCERE_PRIVADO",
+    "descricao_ato": "Privar alguém de sua liberdade mediante sequestro",
+    "pesos": {
+      "victim": 0.45,
+      "location_cativeiro": 0.25,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "location_cativeiro": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-079",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": true,
+      "threat_evidence": true,
+      "suspect": true,
+      "demanded_values_proof": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-080",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": false,
+      "threat_evidence": false,
+      "suspect": false,
+      "demanded_values_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-081",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": true,
+      "threat_evidence": true,
+      "suspect": false,
+      "demanded_values_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-082",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": true,
+      "threat_evidence": false,
+      "suspect": false,
+      "demanded_values_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-083",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": true,
+      "threat_evidence": false,
+      "suspect": true,
+      "demanded_values_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-084",
+    "ato_infracional": "EXTORSAO",
+    "descricao_ato": "Constranger alguém mediante violência a fazer algo em vantagem econômica",
+    "pesos": {
+      "victim": 0.35,
+      "threat_evidence": 0.3,
+      "suspect": 0.2,
+      "demanded_values_proof": 0.15
+    },
+    "features": {
+      "victim": false,
+      "threat_evidence": true,
+      "suspect": true,
+      "demanded_values_proof": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-085",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": true,
+      "ransom_demand_proof": true,
+      "suspect": true,
+      "location_cativeiro": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-086",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": false,
+      "ransom_demand_proof": false,
+      "suspect": false,
+      "location_cativeiro": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-087",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": true,
+      "ransom_demand_proof": true,
+      "suspect": false,
+      "location_cativeiro": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-088",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": true,
+      "ransom_demand_proof": false,
+      "suspect": false,
+      "location_cativeiro": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-089",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": true,
+      "ransom_demand_proof": false,
+      "suspect": true,
+      "location_cativeiro": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-090",
+    "ato_infracional": "EXTORSAO_MEDIANTE_SEQUESTRO",
+    "descricao_ato": "Sequestrar pessoa com o fim de obter qualquer vantagem como resgate",
+    "pesos": {
+      "victim_abducted": 0.4,
+      "ransom_demand_proof": 0.3,
+      "suspect": 0.15,
+      "location_cativeiro": 0.15
+    },
+    "features": {
+      "victim_abducted": false,
+      "ransom_demand_proof": true,
+      "suspect": true,
+      "location_cativeiro": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-091",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": true,
+      "victim": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-092",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": false,
+      "victim": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-093",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": true,
+      "victim": true,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-094",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": true,
+      "victim": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-095",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": true,
+      "victim": false,
+      "suspect": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-096",
+    "ato_infracional": "DANO_QUALIFICADO",
+    "descricao_ato": "Destruir, inutilizar ou deteriorar coisa alheia",
+    "pesos": {
+      "damaged_property_proof": 0.4,
+      "victim": 0.3,
+      "suspect": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "damaged_property_proof": false,
+      "victim": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-097",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "threat_description": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-098",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "threat_description": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-099",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "threat_description": true,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-100",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "threat_description": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-101",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "threat_description": false,
+      "suspect": true,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-102",
+    "ato_infracional": "AMEACA",
+    "descricao_ato": "Ameaçar alguém de causar-lhe mal injusto e grave",
+    "pesos": {
+      "victim": 0.4,
+      "threat_description": 0.3,
+      "suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "threat_description": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-103",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": true,
+      "location_coordinates": true,
+      "offender_identified": true,
+      "witnesses_or_photos": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-104",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": false,
+      "location_coordinates": false,
+      "offender_identified": false,
+      "witnesses_or_photos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-105",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": true,
+      "location_coordinates": true,
+      "offender_identified": false,
+      "witnesses_or_photos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-106",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": true,
+      "location_coordinates": false,
+      "offender_identified": false,
+      "witnesses_or_photos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-107",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": true,
+      "location_coordinates": false,
+      "offender_identified": true,
+      "witnesses_or_photos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-108",
+    "ato_infracional": "CRIME_AMBIENTAL",
+    "descricao_ato": "Dano ao meio ambiente, desmatamento ou poluição grave",
+    "pesos": {
+      "environmental_damage_report": 0.45,
+      "location_coordinates": 0.25,
+      "offender_identified": 0.2,
+      "witnesses_or_photos": 0.1
+    },
+    "features": {
+      "environmental_damage_report": false,
+      "location_coordinates": true,
+      "offender_identified": true,
+      "witnesses_or_photos": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-109",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": true,
+      "offender_identified": true,
+      "address": true,
+      "witnesses_or_videos": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-110",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": false,
+      "offender_identified": false,
+      "address": false,
+      "witnesses_or_videos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-111",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": true,
+      "offender_identified": true,
+      "address": false,
+      "witnesses_or_videos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-112",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": true,
+      "offender_identified": false,
+      "address": false,
+      "witnesses_or_videos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-113",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": true,
+      "offender_identified": false,
+      "address": true,
+      "witnesses_or_videos": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-114",
+    "ato_infracional": "MAUS_TRATOS_ANIMAIS",
+    "descricao_ato": "Praticar ato de abuso ou maus-tratos a animais domésticos ou silvestres",
+    "pesos": {
+      "animal_rescued_or_laudo": 0.4,
+      "offender_identified": 0.3,
+      "address": 0.2,
+      "witnesses_or_videos": 0.1
+    },
+    "features": {
+      "animal_rescued_or_laudo": false,
+      "offender_identified": true,
+      "address": true,
+      "witnesses_or_videos": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-115",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": true,
+      "driver_identified": true,
+      "vehicle_seized": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-116",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": false,
+      "driver_identified": false,
+      "vehicle_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-117",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": true,
+      "driver_identified": true,
+      "vehicle_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-118",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": true,
+      "driver_identified": false,
+      "vehicle_seized": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-119",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": true,
+      "driver_identified": false,
+      "vehicle_seized": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-120",
+    "ato_infracional": "EMBRIAGUEZ_AO_VOLANTE",
+    "descricao_ato": "Conduzir veículo automotor com capacidade psicomotora alterada",
+    "pesos": {
+      "bafometro_or_laudo": 0.5,
+      "driver_identified": 0.3,
+      "vehicle_seized": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "bafometro_or_laudo": false,
+      "driver_identified": true,
+      "vehicle_seized": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-121",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "pericia_local": true,
+      "driver_suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-122",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "pericia_local": false,
+      "driver_suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-123",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "pericia_local": true,
+      "driver_suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-124",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "pericia_local": false,
+      "driver_suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-125",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "pericia_local": false,
+      "driver_suspect": true,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-126",
+    "ato_infracional": "HOMICIDIO_CULPOSO_TRANSITO",
+    "descricao_ato": "Praticar homicídio culposo na direção de veículo automotor",
+    "pesos": {
+      "victim": 0.4,
+      "pericia_local": 0.3,
+      "driver_suspect": 0.2,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "pericia_local": true,
+      "driver_suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-127",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": true,
+      "suspect": true,
+      "witnesses": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-128",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": false,
+      "suspect": false,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-129",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": true,
+      "suspect": true,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-130",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": true,
+      "suspect": false,
+      "witnesses": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-131",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": true,
+      "suspect": false,
+      "witnesses": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-132",
+    "ato_infracional": "RESISTENCIA_DESOBEDIENCIA",
+    "descricao_ato": "Opor-se à execução de ato legal mediante violência a funcionário público",
+    "pesos": {
+      "police_report_officers": 0.4,
+      "suspect": 0.3,
+      "witnesses": 0.15,
+      "address": 0.15
+    },
+    "features": {
+      "police_report_officers": false,
+      "suspect": true,
+      "witnesses": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-133",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": true,
+      "suspect": true,
+      "seized_assets": true,
+      "shell_companies_identified": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-134",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": false,
+      "suspect": false,
+      "seized_assets": false,
+      "shell_companies_identified": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-135",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": true,
+      "suspect": true,
+      "seized_assets": false,
+      "shell_companies_identified": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-136",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": true,
+      "suspect": false,
+      "seized_assets": false,
+      "shell_companies_identified": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-137",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": true,
+      "suspect": false,
+      "seized_assets": true,
+      "shell_companies_identified": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-138",
+    "ato_infracional": "LAVAGEM_DE_DINHEIRO",
+    "descricao_ato": "Ocultar ou dissimular a natureza ou origem de bens oriundos de crime",
+    "pesos": {
+      "financial_laudo": 0.4,
+      "suspect": 0.3,
+      "seized_assets": 0.2,
+      "shell_companies_identified": 0.1
+    },
+    "features": {
+      "financial_laudo": false,
+      "suspect": true,
+      "seized_assets": true,
+      "shell_companies_identified": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-139",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": true,
+      "members_identified": true,
+      "hierarchical_structure_proof": true,
+      "seized_materials": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-140",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": false,
+      "members_identified": false,
+      "hierarchical_structure_proof": false,
+      "seized_materials": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-141",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": true,
+      "members_identified": true,
+      "hierarchical_structure_proof": false,
+      "seized_materials": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-142",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": true,
+      "members_identified": false,
+      "hierarchical_structure_proof": false,
+      "seized_materials": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-143",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": true,
+      "members_identified": false,
+      "hierarchical_structure_proof": true,
+      "seized_materials": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-144",
+    "ato_infracional": "ORGANIZACAO_CRIMINOSA",
+    "descricao_ato": "Associação de 4 ou mais pessoas estruturalmente ordenada para crimes",
+    "pesos": {
+      "investigation_report": 0.35,
+      "members_identified": 0.3,
+      "hierarchical_structure_proof": 0.2,
+      "seized_materials": 0.15
+    },
+    "features": {
+      "investigation_report": false,
+      "members_identified": true,
+      "hierarchical_structure_proof": true,
+      "seized_materials": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-145",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_laudo": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-146",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "medical_laudo": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-147",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_laudo": true,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-148",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_laudo": false,
+      "suspect": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-149",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "medical_laudo": false,
+      "suspect": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-150",
+    "ato_infracional": "ESTUPRO_DE_VULNERAVEL",
+    "descricao_ato": "Praticar ato libidinoso com menor de 14 anos ou pessoa vulnerável",
+    "pesos": {
+      "victim": 0.45,
+      "medical_laudo": 0.3,
+      "suspect": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "medical_laudo": true,
+      "suspect": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-151",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "witnesses_or_cameras": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-152",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": false,
+      "witnesses_or_cameras": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-153",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": true,
+      "witnesses_or_cameras": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-154",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "witnesses_or_cameras": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-155",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": true,
+      "suspect": false,
+      "witnesses_or_cameras": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-156",
+    "ato_infracional": "IMPORTUNACAO_SEXUAL",
+    "descricao_ato": "Praticar contra alguém ato libidinoso sem a sua anuência",
+    "pesos": {
+      "victim": 0.4,
+      "suspect": 0.3,
+      "witnesses_or_cameras": 0.2,
+      "address": 0.1
+    },
+    "features": {
+      "victim": false,
+      "suspect": true,
+      "witnesses_or_cameras": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-157",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": true,
+      "suspect": true,
+      "victim_or_institution": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-158",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": false,
+      "suspect": false,
+      "victim_or_institution": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-159",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": true,
+      "suspect": true,
+      "victim_or_institution": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-160",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": true,
+      "suspect": false,
+      "victim_or_institution": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-161",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": true,
+      "suspect": false,
+      "victim_or_institution": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-162",
+    "ato_infracional": "FALSIDADE_IDEOLOGICA",
+    "descricao_ato": "Omitir ou inserir declaração falsa em documento público ou particular",
+    "pesos": {
+      "fraudulent_document_proof": 0.45,
+      "suspect": 0.3,
+      "victim_or_institution": 0.15,
+      "address": 0.1
+    },
+    "features": {
+      "fraudulent_document_proof": false,
+      "suspect": true,
+      "victim_or_institution": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-163",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": true,
+      "suspect": true,
+      "pericia_laudo": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-164",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": false,
+      "suspect": false,
+      "pericia_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-165",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": true,
+      "suspect": true,
+      "pericia_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-166",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": true,
+      "suspect": false,
+      "pericia_laudo": false,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-167",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": true,
+      "suspect": false,
+      "pericia_laudo": true,
+      "address": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-168",
+    "ato_infracional": "USO_DOCUMENTO_FALSO",
+    "descricao_ato": "Fazer uso de qualquer dos papéis falsificados ou alterados",
+    "pesos": {
+      "false_document_seized": 0.5,
+      "suspect": 0.3,
+      "pericia_laudo": 0.1,
+      "address": 0.1
+    },
+    "features": {
+      "false_document_seized": false,
+      "suspect": true,
+      "pericia_laudo": true,
+      "address": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-169",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": true,
+      "victim": true,
+      "suspect_ip_or_identity": true,
+      "stolen_data_proof": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-170",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": false,
+      "victim": false,
+      "suspect_ip_or_identity": false,
+      "stolen_data_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-171",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": true,
+      "victim": true,
+      "suspect_ip_or_identity": false,
+      "stolen_data_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-172",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": true,
+      "victim": false,
+      "suspect_ip_or_identity": false,
+      "stolen_data_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-173",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": true,
+      "victim": false,
+      "suspect_ip_or_identity": true,
+      "stolen_data_proof": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-174",
+    "ato_infracional": "INVASAO_DISPOSITIVO_INFORMATICO",
+    "descricao_ato": "Invadir dispositivo informático para obter ou adulterar dados",
+    "pesos": {
+      "digital_forensics_laudo": 0.4,
+      "victim": 0.3,
+      "suspect_ip_or_identity": 0.2,
+      "stolen_data_proof": 0.1
+    },
+    "features": {
+      "digital_forensics_laudo": false,
+      "victim": true,
+      "suspect_ip_or_identity": true,
+      "stolen_data_proof": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-175",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "messages_or_evidence": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-176",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "messages_or_evidence": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-177",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "messages_or_evidence": true,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-178",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "messages_or_evidence": false,
+      "suspect": false,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-179",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": true,
+      "messages_or_evidence": false,
+      "suspect": true,
+      "witnesses": false
+    }
+  },
+  {
+    "id_caso": "MOCK-ATO-180",
+    "ato_infracional": "STALKING_PERSEGUICAO",
+    "descricao_ato": "Perseguir alguém reiteradamente ameaçando sua integridade",
+    "pesos": {
+      "victim": 0.4,
+      "messages_or_evidence": 0.35,
+      "suspect": 0.15,
+      "witnesses": 0.1
+    },
+    "features": {
+      "victim": false,
+      "messages_or_evidence": true,
+      "suspect": true,
+      "witnesses": true
+    }
+  }
+]

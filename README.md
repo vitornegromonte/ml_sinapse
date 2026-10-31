@@ -19,6 +19,7 @@ Each worker is its own process/container, consuming its own stream with the
 | `embedding` | `python run_worker.py embedding` | `embedding:tasks` | `gold.bo_embedding` |
 | `linkage` | `python run_worker.py linkage` | `linkage:tasks` | `gold.bo_relacionado` |
 | `cluster` | `python run_worker.py cluster` | `cluster:tasks` (any msg = trigger) | `gold.clusters`, `gold.bo_cluster` |
+| `scoring` | `python run_worker.py scoring` | `scoring:tasks` | `scoring:tasks:results` |
 
 ## Contract with the backend (sinapse repo)
 
