@@ -29,3 +29,18 @@ Dharma, GLM ou MLflow. Dharma e GLM rodam via **vLLM** (`LLM.chat`), não via
 `AutoModelForImageTextToText`. O default do compose é `zai-org/GLM-OCR`;
 `Dharma-AI/Dharma-OCR-LITE` continua suportado. O caminho lazy → imagem →
 chat template → geração de texto permanece o mesmo.
+
+## Atualização (2026-11-19)
+
+O default voltou a ser `Dharma-AI/Dharma-OCR-LITE` (`config.py` e
+`docker-compose.yml`). No benchmark MDPBench em português, o Dharma teve 56,0
+Overall contra 85,1 do GLM-OCR; a troca foi uma decisão explícita do projeto e
+deve ser validada em BOs reais. `zai-org/GLM-OCR` continua registrado: basta
+definir `OCR_MODEL_NAME`.
+
+O DPI de renderização das páginas escaneadas agora é configurável
+(`ocr_render_dpi` / `OCR_RENDER_DPI`, padrão 200, limite 72–400). Antes era 150
+fixo em `PdfExtractor`. O Qwen2.5-VL lê a imagem no tamanho original, então o
+número de tokens de imagem cresce com o quadrado do DPI: uma página A4 tem
+cerca de 2,8k tokens a 150 dpi, 4,9k a 200 dpi e 11k a 300 dpi. Se subir o DPI,
+confira `OCR_MAX_MODEL_LEN` e `OCR_GPU_MEMORY_UTILIZATION`.

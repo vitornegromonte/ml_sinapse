@@ -26,7 +26,7 @@ class OcrWorker(BaseWorker):
             allowed_root=cfg.ocr_image_allowed_root or None,
         )
         self._skew_corrector = SkewCorrector()
-        self._pdf_extractor = PdfExtractor()
+        self._pdf_extractor = PdfExtractor(dpi=cfg.ocr_render_dpi)
         self._result_publisher: ResultPublisher | None = None
         self._storage: StorageService | None = None
 

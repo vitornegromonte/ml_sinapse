@@ -7,8 +7,8 @@ class GlmOcrModel(VllmChatOcrModel):
     Migrated from a transformers .generate() implementation.
     Benchmarked as the strongest of 8 OCR models
     tested against Portuguese MDPBench samples (Overall 85.1 vs. Dharma's
-    56.0), and is now the default production OCR model
-    (config.py's ocr_model_name).
+    56.0). It is no longer the default; select it with
+    OCR_MODEL_NAME=zai-org/GLM-OCR.
 
     No CPU fallback and no image-resize step here, unlike the transformers
     version this replaced — vLLM is GPU-only, and the benchmark ran this

@@ -36,8 +36,13 @@ services:
       # Confines a task's image_path to the mounted fixtures dir (see
       # services/image_loader.py) — local paths outside it are refused.
       - OCR_IMAGE_ALLOWED_ROOT=/fixtures/images
-      # Best of 8 models on Portuguese MDPBench — see docs/adr-004-multimodal-ocr.md.
-      - OCR_MODEL_NAME=zai-org/GLM-OCR
+      # Dharma-OCR-LITE (Qwen2.5-VL). GLM-OCR scored higher on the Portuguese
+      # MDPBench samples — set OCR_MODEL_NAME=zai-org/GLM-OCR to switch back.
+      # See docs/adr-004-multimodal-ocr.md.
+      - OCR_MODEL_NAME=Dharma-AI/Dharma-OCR-LITE
+      # Render DPI for scanned pages (72-400). Higher is sharper but costs
+      # image tokens, so keep OCR_MAX_MODEL_LEN large enough for the page.
+      - OCR_RENDER_DPI=200
       # Model loading runs inside asyncio.to_thread (see ocr_worker.py), so
       # vLLM's internal engine-core process gets forked from a non-main
       # thread that's already touched CUDA — fails with "Cannot re-initialize

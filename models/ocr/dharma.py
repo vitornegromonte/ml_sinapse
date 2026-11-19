@@ -4,11 +4,12 @@ from models.ocr.vllm_chat_base import VllmChatOcrModel
 class DharmaOcrModel(VllmChatOcrModel):
     """Dharma-OCR (Qwen2.5-VL) served via vLLM.
 
-    Same model weights as before (`Dharma-AI/Dharma-OCR-LITE`, a Qwen2.5-VL
-    fine-tune, see docs/adr-004-multimodal-ocr.md). No longer the
-    default production OCR model — benchmarked
-    lowest of 8 models tested against Portuguese MDPBench samples (Overall
-    56.0 vs. GLM-OCR's 85.1). Kept registered/selectable via ocr_model_name.
+    `Dharma-AI/Dharma-OCR-LITE` is a Qwen2.5-VL fine-tune (see
+    docs/adr-004-multimodal-ocr.md). It is the default production OCR model
+    (config.py's ocr_model_name). It scored lowest of 8 models on the
+    Portuguese MDPBench samples (Overall 56.0 vs. GLM-OCR's 85.1); it was
+    chosen anyway, so measure it on real BOs. Qwen2.5-VL reads images at
+    their native size, so config.py's ocr_render_dpi sets the image token cost.
     """
 
     SYSTEM_PROMPT = (

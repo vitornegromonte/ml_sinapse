@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from config import Settings
 from workers.ocr_worker import OcrWorker
 
 
@@ -31,6 +32,17 @@ def worker(mock_redis, mock_model):
 
 
 class TestOcrWorker:
+    def test_pdf_extractor_uses_configured_dpi(self, mock_redis):
+        """Arrange: settings with a custom ocr_render_dpi.
+        Act: build the worker.
+        Assert: the PDF extractor renders at that DPI.
+        """
+        cfg = Settings(_env_file=None, ocr_render_dpi=300)
+
+        worker = OcrWorker(cfg)
+
+        assert worker._pdf_extractor._dpi == 300
+
     async def test_process_success(self, worker, mock_redis, mock_model, ocr_payload):
         """Arrange: a worker with image loading and skew correction patched.
         Act: process an image payload.

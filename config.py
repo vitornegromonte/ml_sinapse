@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,11 +18,16 @@ class Settings(BaseSettings):
 
     model_base_path: str = "/model-cache"
 
-    # Default production OCR model — benchmarked
-    # best of 8 models tested against Portuguese MDPBench samples (Overall
-    # 85.1). Was Dharma-AI/Dharma-OCR-LITE (scored 56.0, lowest of the 8) —
-    # still registered/selectable, see models/ocr/registry.py.
-    ocr_model_name: str = "zai-org/GLM-OCR"
+    # Default production OCR model: Dharma-AI/Dharma-OCR-LITE (Qwen2.5-VL
+    # fine-tune). It replaced zai-org/GLM-OCR, which scored 85.1 Overall on the
+    # Portuguese MDPBench samples against Dharma's 56.0 — GLM-OCR is still
+    # registered and selectable, see models/ocr/registry.py and ADR-004.
+    ocr_model_name: str = "Dharma-AI/Dharma-OCR-LITE"
+    # DPI used to render scanned PDF pages and image blocks before OCR. Bounded
+    # on purpose: image tokens grow with the square of the DPI, so an unchecked
+    # value can exceed max_model_len or the GPU budget. At 200 dpi an A4 page is
+    # about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
+    ocr_render_dpi: int = Field(default=200, ge=72, le=400)
     ocr_gpu_device: int = 0
     ocr_max_tokens: int = 2048
     ocr_request_timeout: int = 120  # seconds
