@@ -44,3 +44,32 @@ fixo em `PdfExtractor`. O Qwen2.5-VL lê a imagem no tamanho original, então o
 número de tokens de imagem cresce com o quadrado do DPI: uma página A4 tem
 cerca de 2,8k tokens a 150 dpi, 4,9k a 200 dpi e 11k a 300 dpi. Se subir o DPI,
 confira `OCR_MAX_MODEL_LEN` e `OCR_GPU_MEMORY_UTILIZATION`.
+
+## Atualização (2026-11-19, saída JSON e limites de recurso)
+
+O teste real com o modelo na GPU mostrou três ajustes:
+
+- **Saída em JSON.** O Dharma-OCR-LITE responde cada página com
+  `{"header", "margin", "footer", "text"}` (campos ausentes vêm `null`), não com
+  texto puro. `DharmaOcrModel` agora devolve só o campo `text`, como texto
+  simples. `header`, `margin` e `footer` são descartados como ruído de página.
+  Se o JSON vier cortado por `max_tokens`, o wrapper devolve o trecho de `text`
+  que foi escrito e registra um aviso. Saída que não é JSON passa sem mudança.
+  O GLM-OCR não é afetado. O conteúdo da página nunca vai para o log. O modelo
+  pode repetir cabeçalho ou rodapé dentro de `text`; isso não é tratado aqui.
+- **Páginas por passada.** Esta seção chegou a definir `ocr_page_batch_size`
+  com padrão 1. A medição do ADR-012 mostrou que o batching é o maior ganho de
+  velocidade, e o padrão passou a 4 (`OCR_PAGE_BATCH_SIZE=1` volta a uma página
+  por chamada). O timeout do ADR-011 vale por chamada ao modelo.
+- **Teto de 15% da GPU.** `ocr_gpu_memory_utilization` tem padrão e máximo de
+  0,15; um valor maior falha na inicialização. A GPU é dividida com os workers
+  de embedding e linkage. Os pesos ocupam 4,6 GiB e o cache KV custa cerca de
+  36 KiB por token. Medido na GPU (95 GiB): o motor ocupa +13 GB, com 6 GiB de
+  cache KV (176 mil tokens).
+- **Contexto de 24 576 e sem vídeo.** Com o contexto nativo de 128 000 o vLLM
+  perfila a memória com uma entrada de vídeo de tamanho máximo, reserva cerca
+  de 21 GiB e não inicia em 15% (cache KV disponível: −6,7 GiB).
+  `ocr_max_model_len` passou a ter padrão 24 576: uma página tem no máximo
+  16 384 tokens de imagem (`max_pixels` do processador) mais `ocr_max_tokens` de
+  saída. `DharmaOcrModel` também desliga vídeo (`limit_mm_per_prompt`
+  `{"image": 1, "video": 0}`). O GLM-OCR continua só com `{"image": 1}`.

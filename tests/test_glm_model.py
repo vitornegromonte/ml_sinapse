@@ -145,3 +145,21 @@ class TestGlmOcrModel:
         model = GlmOcrModel("fake/glm", "/cache", 2)
         with patch("torch.cuda.is_available", return_value=True):
             assert model.device == "cuda:2"
+
+
+class TestGlmOutputIsNotReparsed:
+    def test_json_looking_output_is_returned_as_is(self):
+        """Arrange: a GLM model whose chat answers with JSON-looking text.
+        Act: predict one image.
+        Assert: the text is unchanged, since only Dharma wraps its output in JSON.
+        """
+        from PIL import Image
+        model = GlmOcrModel("zai-org/GLM-OCR", "/cache", 0)
+        model._llm = MagicMock()
+        raw = '{"text": "literal"}'
+        model._llm.chat.return_value = _fake_chat_output(raw)
+
+        with patch("vllm.SamplingParams"):
+            result = model.predict(Image.new("RGB", (10, 10)), max_tokens=64)
+
+        assert result == raw

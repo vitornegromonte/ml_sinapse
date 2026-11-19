@@ -29,8 +29,26 @@ class Settings(BaseSettings):
     # about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
     ocr_render_dpi: int = Field(default=200, ge=72, le=400)
     ocr_gpu_device: int = 0
-    ocr_max_tokens: int = 2048
+    # Output cap per page. 2048 can truncate dense pages and tables; the
+    # input side of a 200 dpi A4 page is about 4.9k tokens, so 4096 output
+    # tokens still fits the model's native context.
+    ocr_max_tokens: int = 4096
     ocr_request_timeout: int = 120  # seconds
+    # Scanned pages sent to the model in one call, so vLLM batches them on the
+    # GPU. Measured on 12 scanned pages (Dharma-OCR-LITE, RTX PRO 6000, 15%
+    # cap, warm model): batch 1 = 248 s, 2 = 141 s, 4 = 83 s (3.0x), 8 = 65 s
+    # (3.8x). 4 is the default because batch 8 left only ~0.5 GiB under the 15%
+    # GPU cap. Use 1 for one page per model pass (OCR_PAGE_BATCH_SIZE=1). A
+    # failed batch costs less now: finished batches are checkpointed.
+    ocr_page_batch_size: int = Field(default=4, ge=1, le=32)
+    # Max seconds for one model call (one batch of pages). A Python thread
+    # cannot be cancelled, so a timeout retires the worker process instead of
+    # reusing a model that may still be running — see OcrWorker._predict.
+    ocr_predict_timeout_seconds: int = Field(default=600, ge=1)
+    # Finished scanned pages of a PDF are kept in Redis for this long, so a
+    # retry of the same task resumes instead of OCR-ing every page again. 0
+    # turns the checkpoint off. See services/ocr_checkpoint.py.
+    ocr_partial_ttl_seconds: int = Field(default=86400, ge=0)
     # Local images (a task's `image_path`) are read only from inside this
     # directory — see services/image_loader.py. Empty disables local-path
     # reads: without a root, image_path is an arbitrary-file-read vector.
@@ -50,8 +68,17 @@ class Settings(BaseSettings):
     # vLLM tuning (any VllmChatOcrModel subclass — see models/ocr/vllm_chat_base.py).
     # Mirrors the llm_* naming already used for the LLM worker's own vLLM engine.
     ocr_dtype: str = "auto"
-    ocr_gpu_memory_utilization: float = 0.9
-    ocr_max_model_len: int | None = None
+    # Share of GPU memory the OCR vLLM engine may use. Capped at 15% on purpose:
+    # the card is shared with the embedding and linkage workers (and, on shared
+    # hosts, with other jobs). Dharma-OCR-LITE needs ~4.6 GiB of weights, and
+    # its KV cache is ~36 KiB per token, so 15% of a 95 GiB card still holds
+    # the model's full 128k context. Values above 0.15 are rejected.
+    ocr_gpu_memory_utilization: float = Field(default=0.15, gt=0, le=0.15)
+    # Context cap for the OCR engine. A page needs at most 16,384 image tokens
+    # (the Qwen2.5-VL processor's max_pixels) + max_tokens output + the prompt,
+    # which is under 24,576. The model's native 128k only inflates vLLM's
+    # memory profiling: at 15% of the GPU it does not even start.
+    ocr_max_model_len: int | None = 24576
 
     # sentence-transformers encoder used to calibrate the linkage classifier
     # (Maynara_cluster_v0/modelo_v1_classificador.joblib) — MUST stay this

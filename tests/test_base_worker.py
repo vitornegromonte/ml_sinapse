@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from workers.base_worker import BaseWorker
+from workers.base_worker import BaseWorker, PermanentTaskError
 
 
 class _FailNTimesWorker(BaseWorker):
@@ -256,3 +256,28 @@ class TestBatchCount:
         w = _BatchWorker(stream="test:stream")
         w.cfg.batch_size = 8
         assert w._batch_count() == 8
+
+
+class _PermanentFailWorker(BaseWorker):
+    async def process(self, data: dict) -> None:
+        raise PermanentTaskError("bad payload")
+
+
+class TestPermanentFailure:
+    async def test_permanent_error_dead_letters_at_once_without_retry(self):
+        """Arrange: a worker whose process() raises PermanentTaskError and a
+        retry counter that has seen no failures.
+        Act: process one message.
+        Assert: it is dead-lettered and acked on the first failure, and the
+        retry counter is never touched.
+        """
+        redis, _ = _make_redis_with_retry_counter()
+        worker = _PermanentFailWorker("s:test")
+        worker.redis = redis
+
+        await worker._process_message("1-0", {"x": "1"})
+
+        dlq_stream = redis.xadd.call_args[0][0]
+        assert dlq_stream == "s:test:dead"
+        redis.xack.assert_awaited_once()
+        redis.hincrby.assert_not_awaited()

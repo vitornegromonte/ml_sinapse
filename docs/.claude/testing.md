@@ -89,10 +89,10 @@ files (`mock_redis`, `sample_image`, `ocr_payload`).
 | Area | Files |
 |---|---|
 | Workers | `test_base_worker`, `test_run_worker`, `test_{ocr,llm,ner,embedding,linkage,cluster}_worker` |
-| Models | `test_{dharma,glm,llm}_model`, `test_mlflow_model`, `test_registry` |
-| Services | `test_gold`, `test_storage`, `test_image_loader`, `test_entity_normalization`, `test_linkage_candidates`, `test_model_sync` |
+| Models | `test_ocr_base`, `test_{dharma,glm,llm}_model`, `test_mlflow_model`, `test_registry` |
+| Services | `test_gold`, `test_storage`, `test_pdf_extractor`, `test_ocr_checkpoint`, `test_image_loader`, `test_entity_normalization`, `test_linkage_candidates`, `test_model_sync` |
 | Tasks / streams | `test_tasks`, `test_{task,result}_publisher`, `test_ocr_task` |
-| Infrastructure | `test_database`, `test_skew_corrector`, `test_profile_models` |
+| Infrastructure | `test_config`, `test_database`, `test_skew_corrector`, `test_profile_models` |
 
 ## Mocks and known gaps
 
