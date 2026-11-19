@@ -117,8 +117,9 @@ Clustering supersedes the whole previous batch.
 3. The OCR worker receives the message through its consumer group.
 4. OCR downloads the PDF from MinIO. A missing object goes to retry, then DLQ.
 5. OCR splits pages with PyMuPDF. It keeps text blocks. It renders scanned
-   pages and image blocks at 150 dpi, deskews them with OpenCV, and sends
-   them to **GLM-OCR** through vLLM. More than `ocr_max_pdf_pages` (200)
+   pages and image blocks at `ocr_render_dpi` (default 200), deskews them
+   with OpenCV, and sends them to **Dharma-OCR-LITE** through vLLM
+   (`OCR_MODEL_NAME` selects another model, such as GLM-OCR). More than `ocr_max_pdf_pages` (200)
    raises an error.
 6. OCR writes the text to `bronze/ml-results/ocr/<document_id>`.
 7. OCR publishes `{document_id, text, text_length}` to `ocr:tasks:results`.
