@@ -26,7 +26,7 @@ Read the guide before you work in its area. Do not repeat guide content in this 
 - `config.py` — environment settings and Redis Stream names
 - `scripts/` — backfills, profiling, and manual task publishers
 - `artifacts/` — classifier and scoring weights, baked into the image
-- `tests/` — one `test_<module>.py` per source module
+- `tests/` — mirrors the source tree (`workers/`, `models/`, `services/`, `scripts/`), one `test_<module>.py` per module; shared fixtures in `conftest.py`
 
 ## Commands
 

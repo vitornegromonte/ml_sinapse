@@ -11,7 +11,6 @@ exist to lock in the retry/ack *logic*, not the exact redis-py call shape.
 
 from unittest.mock import AsyncMock
 
-import pytest
 
 from workers.base_worker import BaseWorker, PermanentTaskError
 

@@ -10,8 +10,9 @@ import pytest
 
 from services.occurrence_scoring import UnknownNature, load_weights
 
-WEIGHTS = Path("artifacts/bo_scoring_weights_v1.json")
-FIXTURE = Path("tests/fixtures/mock_atos_infracionais.json")
+REPO = Path(__file__).resolve().parents[2]
+WEIGHTS = REPO / "artifacts/bo_scoring_weights_v1.json"
+FIXTURE = REPO / "tests/fixtures/mock_atos_infracionais.json"
 
 
 @pytest.fixture(scope="module")
