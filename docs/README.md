@@ -1,6 +1,7 @@
 # ML Service — Architecture Decision Records
 
 Este diretório contém os ADRs (_Architecture Decision Records_) do subsistema de ML.
+Para a visão geral do sistema, veja [architecture.md](./.claude/architecture.md).
 
 | ADR | Título | Status |
 |---|---|---|
@@ -20,4 +21,4 @@ registra o que mudou depois.
 
 ## Outros documentos
 
-- [Testing](./testing.md) — organização da suíte e a convenção Arrange, Act, Assert.
+- [Testing](./.claude/testing.md) — organização da suíte e a convenção Arrange, Act, Assert.

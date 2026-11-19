@@ -22,7 +22,7 @@ tests/fixtures/images/*
 # AI related 
 .opencode
 graphify-out/
-architecture.html
-architecture.md
+/architecture.html
+/architecture.md
 TASK.md
 ML_review.md
