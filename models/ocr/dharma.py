@@ -1,61 +1,63 @@
+"""Dharma-OCR-LITE, the default OCR model."""
 import json
 import logging
 import re
 
+from models.ocr import prompts
 from models.ocr.vllm_chat_base import VllmChatOcrModel
 
 logger = logging.getLogger(__name__)
 
-_FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
-_TEXT_FIELD = re.compile(r'"text"\s*:\s*"')
+# A ```json ... ``` block around the whole answer.
+_CODE_FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+# The start of the "text" string inside a JSON answer: "text": "
+_TEXT_FIELD_START = re.compile(r'"text"\s*:\s*"')
 
 
 class DharmaOcrModel(VllmChatOcrModel):
-    """Dharma-OCR (Qwen2.5-VL) served via vLLM.
+    """`Dharma-AI/Dharma-OCR-LITE`, a Qwen2.5-VL fine-tune, on vLLM.
 
-    `Dharma-AI/Dharma-OCR-LITE` is a Qwen2.5-VL fine-tune (see
-    docs/adr-004-multimodal-ocr.md). It is the default production OCR model
-    (config.py's ocr_model_name). It scored lowest of 8 models on the
-    Portuguese MDPBench samples (Overall 56.0 vs. GLM-OCR's 85.1); it was
-    chosen anyway, so measure it on real BOs. Qwen2.5-VL reads images at
-    their native size, so config.py's ocr_render_dpi sets the image token cost.
+    Output format: the model answers each page with a JSON object,
+    `{"header": ..., "margin": ..., "footer": ..., "text": "..."}`, with null
+    for regions the page does not have. `predict()` and `predict_batch()`
+    return only the `text` field, as plain text. `header`, `margin` and
+    `footer` are dropped as page noise.
 
-    The model answers each page with a JSON object:
-    {"header": ..., "margin": ..., "footer": ..., "text": "..."}, with null for
-    regions the page does not have. predict() and predict_batch() return only
-    the `text` field as plain text. header, margin and footer are dropped as
-    page noise.
+    Quality: it scored lowest of 8 models on the Portuguese MDPBench samples
+    (Overall 56.0, GLM-OCR 85.1) and was chosen anyway. Measure it on real BOs.
+    See docs/adr-004-multimodal-ocr.md.
+
+    Cost: Qwen2.5-VL reads an image at its native size, so `ocr_render_dpi`
+    sets the number of image tokens.
     """
 
-    # Qwen2.5-VL also accepts video. Turning it off removes vLLM's profiling run
-    # for a maximum-size video, which needed ~20 GiB at the native 128k context
-    # and made the 15% GPU cap (config.py) impossible to meet.
+    SYSTEM_PROMPT = prompts.SYSTEM_PROMPT
+    USER_PROMPT = prompts.QWEN_USER_PROMPT
+
+    # Qwen2.5-VL also accepts video. Turning it off removes vLLM's memory
+    # profiling for a maximum-size video. That run needed about 20 GiB at the
+    # native 128k context, which made the 15% GPU cap impossible to meet.
     MM_LIMITS = {"image": 1, "video": 0}
 
-    # The model's own generation_config.json sets repetition_penalty 1.05. Our
-    # explicit SamplingParams ignores that file, and without it some pages
-    # looped until max_tokens (2 of 5 scanned pages on a test PDF).
+    # The model's own generation_config.json sets 1.05. Our explicit
+    # SamplingParams ignores that file. Without it, 2 of 5 image chunks of a
+    # test PDF looped until max_tokens (see docs/adr-012).
     REPETITION_PENALTY = 1.05
 
-    SYSTEM_PROMPT = (
-        "Você é um assistente de transcrição de documentos, "
-        "sua função é extrair todo o texto de uma imagem"
-    )
-    USER_PROMPT = (
-        "Extraia todo o texto e todas as tabelas deste documento. "
-        "Transcreva todas as tabelas caso existam multiplas."
-    )
-
     def _postprocess(self, text: str) -> str:
-        """Return the page's body text from the model's JSON answer.
+        """Return the body text of the model's JSON answer.
 
-        Falls back, in order: a fenced ```json block is unwrapped; valid JSON
-        gives its `text` field; broken JSON (for example cut off by max_tokens)
-        gives whatever of the `text` string was written; anything else is plain
-        text and is returned unchanged. Page content is never logged.
+        Cases, in order:
+          1. A fenced ```json block is unwrapped first.
+          2. Valid JSON with a "text" field gives that field. A null or
+             non-string "text" gives "".
+          3. JSON that does not parse, for example because max_tokens cut it
+             off, gives the part of the "text" string that was written.
+          4. Anything else is plain text and is returned as it is.
+        Page content is never logged.
         """
         raw = text.strip()
-        fenced = _FENCE.match(raw)
+        fenced = _CODE_FENCE.match(raw)
         if fenced:
             raw = fenced.group(1)
 
@@ -67,17 +69,18 @@ class DharmaOcrModel(VllmChatOcrModel):
         if isinstance(parsed, dict) and "text" in parsed:
             body = parsed["text"]
             return body.strip() if isinstance(body, str) else ""
+
         logger.warning("Dharma output is JSON without a 'text' field; keeping it as is")
         return raw
 
     @staticmethod
     def _salvage_text(raw: str) -> str:
-        """Read the `text` string out of JSON that does not parse as a whole.
+        """Read the "text" string out of JSON that does not parse as a whole.
 
-        Reads up to the closing quote, or to the end when the output was cut
-        off. Without a `"text":` field the output is plain text: return it.
+        Reads up to the closing quote, or to the end when the answer was cut
+        off. Without a `"text":` field the answer is plain text, so return it.
         """
-        match = _TEXT_FIELD.search(raw)
+        match = _TEXT_FIELD_START.search(raw)
         if match is None:
             return raw
 
@@ -94,8 +97,10 @@ class DharmaOcrModel(VllmChatOcrModel):
 
         if not closed:
             logger.warning("Dharma output ended inside the 'text' field; page text is partial")
-            # A cut-off output can end in a lone backslash or half an escape.
+            # A cut-off answer can end in a lone backslash or half an escape
+            # such as \u00e. Drop it so the rest still decodes.
             body = re.sub(r"\\(?:u[0-9a-fA-F]{0,3})?$", "", body)
+
         try:
             return json.loads(f'"{body}"').strip()
         except json.JSONDecodeError:

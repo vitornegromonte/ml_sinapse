@@ -15,6 +15,12 @@ def _fake_chat_output(text: str, finish_reason: str = "stop") -> MagicMock:
     return [request_output]
 
 
+def _loaded_model() -> DharmaOcrModel:
+    model = DharmaOcrModel("Dharma-AI/Dharma-OCR-LITE", "/cache", 0)
+    model._llm = MagicMock()
+    return model
+
+
 class TestDharmaOcrModel:
     def test_load_constructs_vllm_engine_with_tuning_params(self):
         """Arrange: a Dharma model with explicit tuning parameters.
@@ -239,12 +245,6 @@ class TestDharmaOcrModel:
         model = DharmaOcrModel("fake/qwen", "/cache", 2)
         with patch("torch.cuda.is_available", return_value=True):
             assert model.device == "cuda:2"
-
-
-def _loaded_model() -> DharmaOcrModel:
-    model = DharmaOcrModel("Dharma-AI/Dharma-OCR-LITE", "/cache", 0)
-    model._llm = MagicMock()
-    return model
 
 
 class TestDharmaJsonOutput:

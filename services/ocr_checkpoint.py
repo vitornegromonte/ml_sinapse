@@ -1,3 +1,4 @@
+"""Keep the finished pages of an OCR run in Redis, so a retry can resume."""
 import hashlib
 import logging
 

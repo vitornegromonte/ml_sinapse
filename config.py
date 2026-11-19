@@ -18,67 +18,83 @@ class Settings(BaseSettings):
 
     model_base_path: str = "/model-cache"
 
-    # Default production OCR model: Dharma-AI/Dharma-OCR-LITE (Qwen2.5-VL
-    # fine-tune). It replaced zai-org/GLM-OCR, which scored 85.1 Overall on the
-    # Portuguese MDPBench samples against Dharma's 56.0 — GLM-OCR is still
-    # registered and selectable, see models/ocr/registry.py and ADR-004.
+    # OCR
+    # The OCR worker (workers/ocr_worker.py). Grouped by purpose. The stream
+    # name `ocr_stream` is with the other streams below.
+
+    # -- Model --
+    # Default: Dharma-AI/Dharma-OCR-LITE (a Qwen2.5-VL fine-tune). It replaced
+    # zai-org/GLM-OCR, which scored 85.1 Overall on the Portuguese MDPBench
+    # samples against Dharma's 56.0. GLM-OCR is still selectable by name. See
+    # models/ocr/registry.py and ADR-004.
     ocr_model_name: str = "Dharma-AI/Dharma-OCR-LITE"
-    # DPI used to render scanned PDF pages and image blocks before OCR. Bounded
-    # on purpose: image tokens grow with the square of the DPI, so an unchecked
-    # value can exceed max_model_len or the GPU budget. At 200 dpi an A4 page is
-    # about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
+    # A model in the MLflow registry. When set, it replaces ocr_model_name and
+    # the vLLM settings below do not apply.
+    ocr_model_uri: str = ""
+
+    # -- Input and rendering --
+    # Local images (a task's `image_path`) are read only from inside this
+    # directory (services/image_loader.py). Empty turns local paths off: without
+    # a root, image_path would let a task read any file.
+    ocr_image_allowed_root: str = ""
+    # Seconds to wait when downloading an image from `image_url`.
+    ocr_request_timeout: int = 120
+    # A PDF with more pages than this is rejected as a permanent failure, so a
+    # pathological or hostile upload cannot hold the worker.
+    ocr_max_pdf_pages: int = 200
+    # DPI used to render scanned pages and image blocks. The range is bounded
+    # because image tokens grow with the square of the DPI. At 200 dpi an A4
+    # page is about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
     ocr_render_dpi: int = Field(default=200, ge=72, le=400)
-    ocr_gpu_device: int = 0
-    # Output cap per page. 2048 can truncate dense pages and tables; the
-    # input side of a 200 dpi A4 page is about 4.9k tokens, so 4096 output
-    # tokens still fits the model's native context.
+
+    # -- Inference --
+    # Output cap per page. 2048 can truncate dense pages and tables. 4096 still
+    # fits the model's context next to the ~4.9k image tokens of a page.
     ocr_max_tokens: int = 4096
-    ocr_request_timeout: int = 120  # seconds
     # Scanned pages sent to the model in one call, so vLLM batches them on the
     # GPU. Measured on 12 scanned pages (Dharma-OCR-LITE, RTX PRO 6000, 15%
     # cap, warm model): batch 1 = 248 s, 2 = 141 s, 4 = 83 s (3.0x), 8 = 65 s
-    # (3.8x). 4 is the default because batch 8 left only ~0.5 GiB under the 15%
-    # GPU cap. Use 1 for one page per model pass (OCR_PAGE_BATCH_SIZE=1). A
-    # failed batch costs less now: finished batches are checkpointed.
+    # (3.8x). The default is 4 because batch 8 left only ~0.5 GiB under the GPU
+    # cap. Use 1 for one page per call (OCR_PAGE_BATCH_SIZE=1). A failed batch
+    # is cheap: finished batches are checkpointed.
     ocr_page_batch_size: int = Field(default=4, ge=1, le=32)
-    # Max seconds for one model call (one batch of pages). A Python thread
-    # cannot be cancelled, so a timeout retires the worker process instead of
-    # reusing a model that may still be running — see OcrWorker._predict.
-    ocr_predict_timeout_seconds: int = Field(default=600, ge=1)
-    # Finished scanned pages of a PDF are kept in Redis for this long, so a
-    # retry of the same task resumes instead of OCR-ing every page again. 0
-    # turns the checkpoint off. See services/ocr_checkpoint.py.
-    ocr_partial_ttl_seconds: int = Field(default=86400, ge=0)
-    # Local images (a task's `image_path`) are read only from inside this
-    # directory — see services/image_loader.py. Empty disables local-path
-    # reads: without a root, image_path is an arbitrary-file-read vector.
-    ocr_image_allowed_root: str = ""
-    # Result streams hold OCR/LLM output until the backend consumer drains it.
-    # The cap is a RAM valve for a dead consumer, not a queue size: whatever
-    # overflows it is dropped with no error. At 1000 a 10k-PDF backfill could
-    # trim the oldest results while the consumer lagged. 50k leaves a full
-    # backfill of headroom, and ResultPublisher logs when the cap actually
-    # bites (that log is the real signal — raise the cap or drain the stream).
-    ocr_result_stream_maxlen: int = 50000
-    # Safety cap for PDF tasks: a pathological document (or a corrupt/hostile
-    # upload) shouldn't monopolize a worker indefinitely. Exceeding this raises
-    # in _process_pdf, which feeds the existing retry/DLQ path in base_worker.py
-    # rather than hanging the consumer loop.
-    ocr_max_pdf_pages: int = 200
-    # vLLM tuning (any VllmChatOcrModel subclass — see models/ocr/vllm_chat_base.py).
-    # Mirrors the llm_* naming already used for the LLM worker's own vLLM engine.
-    ocr_dtype: str = "auto"
-    # Share of GPU memory the OCR vLLM engine may use. Capped at 15% on purpose:
-    # the card is shared with the embedding and linkage workers (and, on shared
-    # hosts, with other jobs). Dharma-OCR-LITE needs ~4.6 GiB of weights, and
-    # its KV cache is ~36 KiB per token, so 15% of a 95 GiB card still holds
-    # the model's full 128k context. Values above 0.15 are rejected.
+
+    # -- GPU --
+    # Device index for models that place themselves (the MLflow model). The
+    # vLLM models follow CUDA_VISIBLE_DEVICES and only report this index.
+    ocr_gpu_device: int = 0
+    # Share of GPU memory the OCR vLLM engine may use. Capped at 15% on
+    # purpose: the card is shared with the embedding and linkage workers (and,
+    # on shared hosts, with other jobs). Dharma-OCR-LITE needs ~4.6 GiB for
+    # weights, and its KV cache costs ~36 KiB per token. Values above 0.15 are
+    # rejected.
     ocr_gpu_memory_utilization: float = Field(default=0.15, gt=0, le=0.15)
     # Context cap for the OCR engine. A page needs at most 16,384 image tokens
-    # (the Qwen2.5-VL processor's max_pixels) + max_tokens output + the prompt,
-    # which is under 24,576. The model's native 128k only inflates vLLM's
-    # memory profiling: at 15% of the GPU it does not even start.
+    # (the Qwen2.5-VL processor's max_pixels) + max_tokens of output + the
+    # prompt, which is under 24,576. At the model's native 128k, vLLM's memory
+    # profiling alone does not fit in 15% of the GPU.
     ocr_max_model_len: int | None = 24576
+    # Weight dtype of the vLLM engine. "auto" uses the model's own.
+    ocr_dtype: str = "auto"
+
+    # -- Resilience --
+    # Max seconds for one model call (one batch of pages). A Python thread
+    # cannot be cancelled, so a timeout retires the worker process instead of
+    # reusing a model that may still be running. See OcrWorker._predict, ADR-011.
+    ocr_predict_timeout_seconds: int = Field(default=600, ge=1)
+    # Seconds that the finished pages of a PDF stay in Redis, so a retry of the
+    # same task resumes instead of OCR-ing every page again. 0 turns the
+    # checkpoint off. See services/ocr_checkpoint.py, ADR-012.
+    ocr_partial_ttl_seconds: int = Field(default=86400, ge=0)
+
+    # -- Output --
+    # Cap of the results stream. The OCR and LLM results wait there until the
+    # backend consumer drains them. The cap is a memory valve for a dead
+    # consumer, not a queue size: what overflows it is dropped without an
+    # error. ResultPublisher logs a warning when the cap is reached, which is
+    # the signal to drain the stream or raise the cap. 50k leaves room for a
+    # full 10k-PDF backfill.
+    ocr_result_stream_maxlen: int = 50000
 
     # sentence-transformers encoder used to calibrate the linkage classifier
     # (Maynara_cluster_v0/modelo_v1_classificador.joblib) — MUST stay this
@@ -183,7 +199,6 @@ class Settings(BaseSettings):
     minio_bucket_models: str = "models"
 
     ner_model_uri: str = ""
-    ocr_model_uri: str = ""
 
 
 settings = Settings()

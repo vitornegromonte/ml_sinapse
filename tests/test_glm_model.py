@@ -153,7 +153,6 @@ class TestGlmOutputIsNotReparsed:
         Act: predict one image.
         Assert: the text is unchanged, since only Dharma wraps its output in JSON.
         """
-        from PIL import Image
         model = GlmOcrModel("zai-org/GLM-OCR", "/cache", 0)
         model._llm = MagicMock()
         raw = '{"text": "literal"}'

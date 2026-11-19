@@ -1,3 +1,8 @@
+"""OCR models and the OCR task payload.
+
+Public names: the model interface (`AbstractOcrModel`), the concrete models,
+the `create_model` factory, and `OcrTask`.
+"""
 from models.ocr.base import AbstractOcrModel
 from models.ocr.dharma import DharmaOcrModel
 from models.ocr.glm import GlmOcrModel
