@@ -26,7 +26,7 @@ boundary. CI runs the same command on Python 3.11
 
 Every test documents the three blocks in its docstring, one label per line.
 The body stays free of `# Arrange` noise. Example
-(`tests/test_image_loader.py::test_from_base64`):
+(`tests/services/test_image_loader.py::TestImageLoader::test_from_base64`):
 
 ```python
 def test_from_base64(self):
@@ -82,17 +82,51 @@ tests.
 
 ## Layout
 
-One file per production module, `tests/test_<module>.py`; a class groups the
-tests for one entry point. `tests/conftest.py` holds the fixtures shared across
-files (`mock_redis`, `sample_image`, `ocr_payload`).
+The `tests/` folder mirrors the source tree. The test for `services/gold.py` is
+`tests/services/test_gold.py`. Each folder is a Python package (it has an
+`__init__.py`), so two folders can hold files with the same name.
 
-| Area | Files |
-|---|---|
-| Workers | `test_base_worker`, `test_run_worker`, `test_{ocr,llm,ner,embedding,linkage,cluster}_worker` |
-| Models | `test_{dharma,glm,llm}_model`, `test_mlflow_model`, `test_registry` |
-| Services | `test_gold`, `test_storage`, `test_image_loader`, `test_entity_normalization`, `test_linkage_candidates`, `test_model_sync` |
-| Tasks / streams | `test_tasks`, `test_{task,result}_publisher`, `test_ocr_task` |
-| Infrastructure | `test_database`, `test_skew_corrector`, `test_profile_models` |
+```text
+tests/
+├── conftest.py              fixtures for all tests, and the vLLM stand-in
+├── fixtures/                data files (compose mounts fixtures/images)
+├── test_config.py           config.py
+├── models/                  models/
+│   ├── test_llm_model.py
+│   ├── test_tasks.py
+│   └── ocr/                 models/ocr/: test_base, test_dharma, test_glm,
+│                            test_mlflow_model, test_registry, test_task
+├── scripts/                 scripts/: test_profile_models.py
+├── services/                services/: one file per module
+└── workers/                 workers/
+    ├── test_base_worker.py, test_run_worker.py
+    ├── test_{cluster,embedding,linkage_scoring,llm,ner,scoring}_worker.py
+    └── ocr/                 a folder, because the OCR worker has many behaviors
+        ├── conftest.py      fixtures: mock_model, worker
+        ├── helpers.py       FakeRedis, scanned_pdf, echo_model, run_pdf
+        └── test_process.py, test_permanent_errors.py, test_batching.py,
+            test_resume.py, test_timeout.py
+```
+
+Rules:
+
+1. Name a test file `test_<module>.py`, after the module it tests.
+2. A class groups the tests for one entry point or one behavior.
+3. A module with many behaviors may become a folder, as `workers/ocr/` did.
+   Put its fixtures in the folder's `conftest.py`. Put plain helpers that
+   several files share in `helpers.py`, and import them from there.
+4. Put a fixture in `tests/conftest.py` only when tests in more than one folder
+   use it (`mock_redis`, `sample_image`, `ocr_payload`).
+5. Find data files from `Path(__file__)`, never from the working directory.
+   Then the tests pass from any folder.
+
+Run a part of the suite:
+
+```bash
+python -m pytest -q tests/workers                   # one area
+python -m pytest -q tests/workers/ocr               # one folder
+python -m pytest -q tests/services/test_gold.py     # one file
+```
 
 ## Mocks and known gaps
 
@@ -103,7 +137,7 @@ files (`mock_redis`, `sample_image`, `ocr_payload`).
   patch `vllm.LLM` / `vllm.SamplingParams` pass either way, but a real API
   rename is only caught on the GPU machine.
 - Mocked tests cannot catch wrong call shapes on a real client — an `AsyncMock`
-  accepts any keyword name. `tests/test_base_worker.py` documents the
+  accepts any keyword name. `tests/workers/test_base_worker.py` documents the
   `xautoclaim(start=...)` vs `start_id` incident for this reason.
 - There is no Redis/Postgres/MinIO integration run. Statement-level tests such
   as `test_gold.py` pin the SQL sequence deliberately; they are the exception
@@ -114,9 +148,10 @@ files (`mock_redis`, `sample_image`, `ocr_payload`).
 
 ## Adding a test
 
-1. Put it in the matching `tests/test_<module>.py`.
+1. Put it in the matching `tests/<folder>/test_<module>.py`. Use the folder that
+   mirrors the source module (see Layout).
 2. Write the Arrange/Act/Assert docstring and body first; add the fixture only
    if another test needs the same setup.
 3. Assert behaviour. If you must pin an implementation detail, say why in one
    line above the assertion.
-4. Run `python -m pytest -q tests/test_<module>.py`.
+4. Run `python -m pytest -q tests/<folder>/test_<module>.py`.

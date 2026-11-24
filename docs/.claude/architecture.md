@@ -42,7 +42,7 @@ output round-trip through a backend-side stream consumer.
 |---|---|---|---|---|
 | SINAPSE backend | `sinapse` repo | FastAPI | result streams | `ocr:tasks`, `ner:tasks`, `scoring:tasks`, source PDFs in `bronze`; writes `silver` |
 | Backfill / trigger | `scripts/` | one-shot CLI | `silver` + `gold` reads | `embedding:tasks`, `linkage:tasks`, `cluster:tasks` |
-| Redis Streams | core stack | Redis | — | task/result streams, retry hashes, leases, `:dead` streams |
+| Redis Streams | core stack | Redis | — | task/result streams, retry hashes, leases, `:dead` streams, OCR checkpoint hashes |
 | MinIO | core stack | S3 | — | `bronze`, `models`, `mlflow-artifacts` |
 | Postgres | core stack | PG + pgvector | — | `silver`, `gold` |
 | OCR worker | `workers/ocr_worker.py` | GPU | `ocr:tasks` | `bronze/ml-results/ocr/…`, `ocr:tasks:results` |
@@ -94,6 +94,9 @@ Every worker inherits `workers/base_worker.py`:
 - While a message is in flight, the worker refreshes a lease key
   `<stream>:lease:<id>` every 10 s (TTL 30 s). A replica skips the reclaim
   when the lease is alive. This stops it from stealing slow work.
+- A `PermanentTaskError` skips the retries. The worker copies the payload to
+  `<stream>:dead` at once and acks it (ADR-011). Raise it only for tasks that
+  can never succeed.
 - After `max_retries` (3), the payload is copied to `<stream>:dead` and acked.
   `:dead` streams keep at most 10,000 entries and 30 days.
 - The worker shuts down cleanly on `SIGTERM`/`SIGINT`.
@@ -115,19 +118,49 @@ Clustering supersedes the whole previous batch.
 1. Backend uploads the PDF to `bronze/bos/<year>/<id>/original.pdf`.
 2. Backend publishes `{document_id, pdf_bucket, pdf_key}` to `ocr:tasks`.
 3. The OCR worker receives the message through its consumer group.
-4. OCR downloads the PDF from MinIO. A missing object goes to retry, then DLQ.
+4. OCR validates the payload. An invalid payload is a permanent failure and goes
+   straight to DLQ. OCR then downloads the PDF from MinIO. A missing object goes
+   to retry, then DLQ.
 5. OCR splits pages with PyMuPDF. It keeps text blocks. It renders scanned
-   pages and image blocks at `ocr_render_dpi` (default 200), deskews them
-   with OpenCV, and sends them to **Dharma-OCR-LITE** through vLLM
-   (`OCR_MODEL_NAME` selects another model, such as GLM-OCR). More than `ocr_max_pdf_pages` (200)
-   raises an error.
+   pages and image blocks at `ocr_render_dpi` (default 200) and deskews them
+   with OpenCV. More than `ocr_max_pdf_pages` (200) is a permanent failure.
+   OCR sends the scanned pages to **Dharma-OCR-LITE** through vLLM in batches
+   of `ocr_page_batch_size` (default 4; `OCR_PAGE_BATCH_SIZE=1` gives one page
+   per model call). The PDF order is kept. While one batch is on the GPU, the
+   worker renders and deskews the next batch. The model runs with
+   `repetition_penalty` 1.05, the value in the model's own
+   `generation_config.json`. Without it, some pages looped until the token cap.
+   Dharma answers each page with JSON (`header`, `margin`, `footer`, `text`).
+   The model wrapper keeps only `text` and returns it as plain text.
+   `OCR_MODEL_NAME` selects another model, such as GLM-OCR, whose output is
+   used as is. The OCR vLLM engine may use at most 15% of GPU memory
+   (`ocr_gpu_memory_utilization`, default and maximum 0.15) and a context of
+   `ocr_max_model_len` (default 24,576). At the model's native 128k context the
+   engine does not start inside 15%.
+   Each model call has a limit of `ocr_predict_timeout_seconds` (default 600).
+   After a timeout the worker fails the message, stops, and exits the process.
+   The container restart policy starts a new one (see ADR-011).
+   After each finished batch, OCR saves the page texts in the Redis hash
+   `<stream>:partial:<document_id>:<hash>` with a TTL of
+   `ocr_partial_ttl_seconds` (default 86,400; 0 turns it off). The hash covers
+   the PDF bytes, the model, the DPI, and the token cap. A retry of the same
+   task reads that hash and does not render or OCR the saved pages again
+   (ADR-012).
 6. OCR writes the text to `bronze/ml-results/ocr/<document_id>`.
 7. OCR publishes `{document_id, text, text_length}` to `ocr:tasks:results`.
+   Then it deletes the checkpoint hash. A failure before this point keeps it.
 8. The LLM worker consumes that stream.
-9. The LLM builds the Portuguese summary prompt and generates with vLLM.
+9. The LLM builds the Portuguese summary prompt and generates with vLLM. The
+   model is `maritaca-ai/S5-nano` (`llm_model_path`), in Instruct mode
+   (`llm_chat_template_kwargs`: `enable_thinking` off), with the sampling in
+   `llm_sampling_params`. It runs text only, at 25% of the GPU
+   (`llm_gpu_memory_utilization`) and the native 262,144-token context (ADR-013).
 10. The summary goes to `bronze/ml-results/llm/<document_id>`.
 11. The LLM publishes the result to `llm:tasks`.
 12. The backend consumes the result and writes `silver` with its own grants.
+
+Image tasks follow the same steps with one page. The worker converts the image
+to RGB first. It raises an error when the OCR text is empty.
 
 ### 2. NER — spaCy mock (logs only)
 

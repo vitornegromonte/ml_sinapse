@@ -1,3 +1,4 @@
+"""Choose the OCR model class from the configured model name."""
 from collections.abc import Callable
 
 from models.ocr.base import AbstractOcrModel
@@ -5,10 +6,10 @@ from models.ocr.dharma import DharmaOcrModel
 from models.ocr.glm import GlmOcrModel
 from models.ocr.mlflow_model import MlflowOcrModel
 
-
-# key -> constructor. Every entry is called with the same kwargs below, so this
-# table never inspects classes: an OCR model with a different constructor
-# registers a small lambda instead.
+# Lowercase part of a model name -> class. The first key found in the name
+# wins, in the order below. Every class is called with the same keyword
+# arguments (see create_model), so a model with a different constructor
+# registers a small lambda here.
 _MODEL_FACTORIES: dict[str, Callable[..., AbstractOcrModel]] = {
     "qwen": DharmaOcrModel,
     "dharma": DharmaOcrModel,
@@ -25,11 +26,18 @@ def create_model(
     gpu_memory_utilization: float = 0.9,
     max_model_len: int | None = None,
 ) -> AbstractOcrModel:
+    """Build the OCR model, without loading it.
+
+    A `model_uri` wins over `model_name`: the model then comes from the MLflow
+    registry and the vLLM settings do not apply. Otherwise the class is chosen
+    from `model_name`. An unknown name raises ValueError.
+    """
     if model_uri:
         return MlflowOcrModel(model_uri, gpu_device=gpu_device)
 
+    name = model_name.lower()
     for key, factory in _MODEL_FACTORIES.items():
-        if key in model_name.lower():
+        if key in name:
             return factory(
                 model_name=model_name,
                 cache_dir=cache_dir,

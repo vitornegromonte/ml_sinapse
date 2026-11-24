@@ -21,9 +21,15 @@ services:
     build: .
     container_name: ml_sinapse_ocr_worker
     command: python run_worker.py ocr
+    # The worker exits on purpose after a model-call timeout (a stuck vLLM thread
+    # cannot be cancelled). Without a restart policy it would stay down.
+    restart: unless-stopped
     volumes:
       - ./tests/fixtures/images:/fixtures/images
       - model_cache:/model-cache
+      # vLLM's compile cache. The worker restarts itself after a model timeout,
+      # and without this volume every restart compiles the kernels again.
+      - vllm_cache:/vllm-cache
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
       # sinapse_ml: least-privilege role, read silver / write gold (never
@@ -48,6 +54,7 @@ services:
       # thread that's already touched CUDA — fails with "Cannot re-initialize
       # CUDA in forked subprocess" without this. Found live, confirmed fix.
       - VLLM_WORKER_MULTIPROC_METHOD=spawn
+      - VLLM_CACHE_ROOT=/vllm-cache
     deploy:
       resources:
         reservations:
@@ -69,7 +76,12 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MODEL_BASE_PATH=/model-cache
-      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-}
+      # Hugging Face id or a local path. An empty value would override the
+      # default in config.py and the engine would fail to start.
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-maritaca-ai/S5-nano}
+      # A Hugging Face id is downloaded on first use. Keep the download in the
+      # shared volume so a container restart does not fetch ~9 GB again.
+      - HF_HOME=/model-cache/huggingface
       # See ocr-worker's comment above — same asyncio.to_thread + vLLM fork issue.
       - VLLM_WORKER_MULTIPROC_METHOD=spawn
     deploy:
@@ -168,3 +180,4 @@ services:
 
 volumes:
   model_cache:
+  vllm_cache:

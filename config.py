@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,40 +20,83 @@ class Settings(BaseSettings):
 
     model_base_path: str = "/model-cache"
 
-    # Default production OCR model: Dharma-AI/Dharma-OCR-LITE (Qwen2.5-VL
-    # fine-tune). It replaced zai-org/GLM-OCR, which scored 85.1 Overall on the
-    # Portuguese MDPBench samples against Dharma's 56.0 — GLM-OCR is still
-    # registered and selectable, see models/ocr/registry.py and ADR-004.
+    # OCR
+    # The OCR worker (workers/ocr_worker.py). Grouped by purpose. The stream
+    # name `ocr_stream` is with the other streams below.
+
+    # -- Model --
+    # Default: Dharma-AI/Dharma-OCR-LITE (a Qwen2.5-VL fine-tune). It replaced
+    # zai-org/GLM-OCR, which scored 85.1 Overall on the Portuguese MDPBench
+    # samples against Dharma's 56.0. GLM-OCR is still selectable by name. See
+    # models/ocr/registry.py and ADR-004.
     ocr_model_name: str = "Dharma-AI/Dharma-OCR-LITE"
-    # DPI used to render scanned PDF pages and image blocks before OCR. Bounded
-    # on purpose: image tokens grow with the square of the DPI, so an unchecked
-    # value can exceed max_model_len or the GPU budget. At 200 dpi an A4 page is
-    # about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
-    ocr_render_dpi: int = Field(default=200, ge=72, le=400)
-    ocr_gpu_device: int = 0
-    ocr_max_tokens: int = 2048
-    ocr_request_timeout: int = 120  # seconds
+    # A model in the MLflow registry. When set, it replaces ocr_model_name and
+    # the vLLM settings below do not apply.
+    ocr_model_uri: str = ""
+
+    # -- Input and rendering --
     # Local images (a task's `image_path`) are read only from inside this
-    # directory — see services/image_loader.py. Empty disables local-path
-    # reads: without a root, image_path is an arbitrary-file-read vector.
+    # directory (services/image_loader.py). Empty turns local paths off: without
+    # a root, image_path would let a task read any file.
     ocr_image_allowed_root: str = ""
-    # Result streams hold OCR/LLM output until the backend consumer drains it.
-    # The cap is a RAM valve for a dead consumer, not a queue size: whatever
-    # overflows it is dropped with no error. At 1000 a 10k-PDF backfill could
-    # trim the oldest results while the consumer lagged. 50k leaves a full
-    # backfill of headroom, and ResultPublisher logs when the cap actually
-    # bites (that log is the real signal — raise the cap or drain the stream).
-    ocr_result_stream_maxlen: int = 50000
-    # Safety cap for PDF tasks: a pathological document (or a corrupt/hostile
-    # upload) shouldn't monopolize a worker indefinitely. Exceeding this raises
-    # in _process_pdf, which feeds the existing retry/DLQ path in base_worker.py
-    # rather than hanging the consumer loop.
+    # Seconds to wait when downloading an image from `image_url`.
+    ocr_request_timeout: int = 120
+    # A PDF with more pages than this is rejected as a permanent failure, so a
+    # pathological or hostile upload cannot hold the worker.
     ocr_max_pdf_pages: int = 200
-    # vLLM tuning (any VllmChatOcrModel subclass — see models/ocr/vllm_chat_base.py).
-    # Mirrors the llm_* naming already used for the LLM worker's own vLLM engine.
+    # DPI used to render scanned pages and image blocks. The range is bounded
+    # because image tokens grow with the square of the DPI. At 200 dpi an A4
+    # page is about 1654x2339 px, roughly 4.9k Qwen2.5-VL image tokens.
+    ocr_render_dpi: int = Field(default=200, ge=72, le=400)
+
+    # -- Inference --
+    # Output cap per page. 2048 can truncate dense pages and tables. 4096 still
+    # fits the model's context next to the ~4.9k image tokens of a page.
+    ocr_max_tokens: int = 4096
+    # Scanned pages sent to the model in one call, so vLLM batches them on the
+    # GPU. Measured on 12 scanned pages (Dharma-OCR-LITE, RTX PRO 6000, 15%
+    # cap, warm model): batch 1 = 248 s, 2 = 141 s, 4 = 83 s (3.0x), 8 = 65 s
+    # (3.8x). The default is 4 because batch 8 left only ~0.5 GiB under the GPU
+    # cap. Use 1 for one page per call (OCR_PAGE_BATCH_SIZE=1). A failed batch
+    # is cheap: finished batches are checkpointed.
+    ocr_page_batch_size: int = Field(default=4, ge=1, le=32)
+
+    # -- GPU --
+    # Device index for models that place themselves (the MLflow model). The
+    # vLLM models follow CUDA_VISIBLE_DEVICES and only report this index.
+    ocr_gpu_device: int = 0
+    # Share of GPU memory the OCR vLLM engine may use. Capped at 15% on
+    # purpose: the card is shared with the embedding and linkage workers (and,
+    # on shared hosts, with other jobs). Dharma-OCR-LITE needs ~4.6 GiB for
+    # weights, and its KV cache costs ~36 KiB per token. Values above 0.15 are
+    # rejected.
+    ocr_gpu_memory_utilization: float = Field(default=0.15, gt=0, le=0.15)
+    # Context cap for the OCR engine. A page needs at most 16,384 image tokens
+    # (the Qwen2.5-VL processor's max_pixels) + max_tokens of output + the
+    # prompt, which is under 24,576. At the model's native 128k, vLLM's memory
+    # profiling alone does not fit in 15% of the GPU.
+    ocr_max_model_len: int | None = 24576
+    # Weight dtype of the vLLM engine. "auto" uses the model's own.
     ocr_dtype: str = "auto"
-    ocr_gpu_memory_utilization: float = 0.9
-    ocr_max_model_len: int | None = None
+
+    # -- Resilience --
+    # Max seconds for one model call (one batch of pages). A Python thread
+    # cannot be cancelled, so a timeout retires the worker process instead of
+    # reusing a model that may still be running. See OcrWorker._predict, ADR-011.
+    ocr_predict_timeout_seconds: int = Field(default=600, ge=1)
+    # Seconds that the finished pages of a PDF stay in Redis, so a retry of the
+    # same task resumes instead of OCR-ing every page again. 0 turns the
+    # checkpoint off. See services/ocr_checkpoint.py, ADR-012.
+    ocr_partial_ttl_seconds: int = Field(default=86400, ge=0)
+
+    # -- Output --
+    # Cap of the results stream. The OCR and LLM results wait there until the
+    # backend consumer drains them. The cap is a memory valve for a dead
+    # consumer, not a queue size: what overflows it is dropped without an
+    # error. ResultPublisher logs a warning when the cap is reached, which is
+    # the signal to drain the stream or raise the cap. 50k leaves room for a
+    # full 10k-PDF backfill.
+    ocr_result_stream_maxlen: int = 50000
 
     # sentence-transformers encoder used to calibrate the linkage classifier
     # (Maynara_cluster_v0/modelo_v1_classificador.joblib) — MUST stay this
@@ -88,14 +133,23 @@ class Settings(BaseSettings):
     # Only used as a fallback when ner_model_uri is unset.
     ner_model_minio_prefix: str = "ner/model-best"
 
-    llm_model_path: str = ""
-    llm_gpu_device: int = 0
-    llm_gpu_memory_utilization: float = 0.9
-    llm_max_model_len: int | None = None
-    llm_tensor_parallel_size: int = 1
-    llm_dtype: str = "auto"
-    llm_sampling_params: dict | None = None
-    llm_result_stream_maxlen: int = 50000
+    # ------------------------------------------------------------------ LLM
+    # The LLM worker (workers/llm_worker.py) summarizes the OCR text. The
+    # stream name `llm_stream` is with the other streams below.
+
+    # -- Model --
+    # Default: maritaca-ai/S5-nano (4B parameters, built on Qwen3.5-4B,
+    # Apache-2.0, Portuguese and English). It replaced google/gemma-4-E4B-it.
+    # See ADR-013. A Hugging Face id is downloaded on first use. A local path
+    # (for example under /model-cache) is read as it is.
+    llm_model_path: str = "maritaca-ai/S5-nano"
+    # Variables for the model's chat template. S5-nano starts in Think mode: it
+    # writes its reasoning before the answer. enable_thinking=False selects
+    # Instruct mode, which gives the answer only, as a summary needs. A model
+    # whose template has no such variable ignores it.
+    llm_chat_template_kwargs: dict[str, Any] = {"enable_thinking": False}
+
+    # -- Prompt --
     llm_prompt_template: str = (
         "Você é um assistente especializado em analisar documentos policiais.\n"
         "Abaixo está o texto extraído de um documento:\n\n"
@@ -107,6 +161,50 @@ class Settings(BaseSettings):
         "4. Provas documentais citadas\n\n"
         "Resumo:"
     )
+
+    # -- Inference --
+    # Sampling for each summary: the values the S5-nano card recommends for
+    # Instruct mode, plus max_tokens. Without max_tokens vLLM stops after 16
+    # tokens. presence_penalty 1.5 stops repetition loops, but it also
+    # discourages reusing names and numbers, so check it on real BOs.
+    llm_sampling_params: dict[str, Any] | None = {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5,
+        "max_tokens": 2048,
+    }
+
+    # -- GPU --
+    llm_gpu_device: int = 0
+    # Share of GPU memory for the LLM engine. Measured with S5-nano on a 95 GiB
+    # card, at the native 262,144-token context: 0.25 gives 8 GiB of weights
+    # (text only) and a 13.6 GiB KV cache (442k tokens). Lower values were not
+    # tried. The OCR engine has its own cap (ocr_gpu_memory_utilization).
+    llm_gpu_memory_utilization: float = 0.25
+    # None keeps the model's native context (262,144 for S5-nano). OCR text of
+    # a long PDF can be very large, so the worker does not cap it.
+    llm_max_model_len: int | None = None
+    llm_tensor_parallel_size: int = 1
+    llm_dtype: str = "auto"
+    # Extra vLLM engine arguments for S5-nano:
+    #   language_model_only skips the vision encoder the model ships with. The
+    #     worker sends text only, and the memory goes to the KV cache.
+    #   max_num_seqs caps the sequences that run together. S5-nano is a hybrid
+    #     model: most layers keep a fixed state per sequence, and vLLM 0.22.1
+    #     (the version pinned in requirements.txt) refuses to start when
+    #     max_num_seqs (default 1024) needs more state blocks than the memory
+    #     holds. The worker reads batch_size (8) messages at a time, so 32 is
+    #     ample.
+    llm_engine_kwargs: dict[str, Any] | None = {
+        "language_model_only": True,
+        "max_num_seqs": 32,
+    }
+
+    # -- Output --
+    # Cap of the results stream. See ocr_result_stream_maxlen.
+    llm_result_stream_maxlen: int = 50000
 
     ocr_stream: str = "ocr:tasks"
     ner_stream: str = "ner:tasks"
@@ -156,7 +254,6 @@ class Settings(BaseSettings):
     minio_bucket_models: str = "models"
 
     ner_model_uri: str = ""
-    ocr_model_uri: str = ""
 
 
 settings = Settings()

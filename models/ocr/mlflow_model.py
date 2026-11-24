@@ -1,38 +1,34 @@
-from pathlib import Path
-
+"""An OCR model loaded from the MLflow registry, run with transformers."""
 import torch
 from PIL import Image
 
 from models.ocr.base import AbstractOcrModel
-
-SYSTEM_PROMPT = (
-    "Você é um assistente de transcrição de documentos, "
-    "sua função é extrair todo o texto de uma imagem"
-)
-
-USER_PROMPT = (
-    "Extraia todo o texto e todas as tabelas deste documento. "
-    "Transcreva todas as tabelas caso existam multiplas."
-)
-
-GLM_USER_PROMPT = (
-    "Transcreva todo o texto presente nesta imagem "
-    "com extrema precisão, no idioma português do Brasil."
-)
+from models.ocr.prompts import GLM_USER_PROMPT, QWEN_USER_PROMPT, SYSTEM_PROMPT
 
 
 class MlflowOcrModel(AbstractOcrModel):
+    """A registered model, loaded with `mlflow.transformers` (`OCR_MODEL_URI`).
+
+    It runs through transformers, not vLLM, and one image at a time, so it uses
+    the default `predict_batch`. It reads the architecture from the loaded
+    model's class name and follows the Qwen or the GLM prompt format.
+    """
+
     def __init__(self, model_uri: str, gpu_device: int = 0):
         self._model_uri = model_uri
         self._gpu_device = gpu_device
         self._processor = None
         self._model = None
 
+    # public
+
     def load(self) -> None:
         import mlflow.transformers
 
         loaded = mlflow.transformers.load_model(self._model_uri)
 
+        # A transformers pipeline holds the model and its processor. A bare
+        # model has neither attribute, so fall back to what the object offers.
         self._model = loaded.model if hasattr(loaded, "model") else loaded
         self._processor = (
             loaded.processor
@@ -47,64 +43,10 @@ class MlflowOcrModel(AbstractOcrModel):
         if hasattr(self._model, "eval"):
             self._model.eval()
 
-    def _model_architecture(self) -> str:
-        class_name = type(self._model).__name__.lower()
-        if "qwen" in class_name:
-            return "qwen"
-        if "glm" in class_name or "chatglm" in class_name:
-            return "glm"
-        return "qwen"
-
     def predict(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
-        arch = self._model_architecture()
-
-        if arch == "glm":
+        if self._model_architecture() == "glm":
             return self._predict_glm(image, max_tokens, prompt)
         return self._predict_qwen(image, max_tokens, prompt)
-
-    def _predict_qwen(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
-        from qwen_vl_utils import process_vision_info
-
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": [
-                {"type": "image", "image": image},
-                {"type": "text", "text": prompt or USER_PROMPT},
-            ]},
-        ]
-
-        text = self._processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        image_inputs, video_inputs = process_vision_info(messages)
-
-        kwargs = dict(text=[text], images=image_inputs, padding=True, return_tensors="pt")
-        if video_inputs:
-            kwargs["videos"] = video_inputs
-
-        inputs = self._processor(**kwargs).to(self.device)
-
-        with torch.no_grad():
-            generated_ids = self._model.generate(**inputs, max_new_tokens=max_tokens)
-
-        trimmed = [
-            out[len(in_ids):] for in_ids, out in zip(inputs.input_ids, generated_ids)
-        ]
-        return self._processor.batch_decode(trimmed, skip_special_tokens=True)[0].strip()
-
-    def _predict_glm(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
-        messages = [
-            {"role": "user", "content": [
-                {"type": "image"},
-                {"type": "text", "text": prompt or GLM_USER_PROMPT},
-            ]}
-        ]
-        text = self._processor.apply_chat_template(messages, add_generation_prompt=True)
-        inputs = self._processor(text=text, images=image, return_tensors="pt").to(self.device)
-
-        with torch.no_grad():
-            outputs = self._model.generate(**inputs, max_new_tokens=max_tokens, do_sample=False)
-
-        input_len = inputs["input_ids"].shape[1]
-        return self._processor.decode(outputs[0][input_len:], skip_special_tokens=True).strip()
 
     def unload(self) -> None:
         self._model = None
@@ -119,3 +61,59 @@ class MlflowOcrModel(AbstractOcrModel):
         if torch.cuda.is_available():
             return f"cuda:{self._gpu_device}"
         return "cpu"
+
+    # private
+
+    def _model_architecture(self) -> str:
+        """"glm" or "qwen", from the class name. Anything unknown is "qwen"."""
+        class_name = type(self._model).__name__.lower()
+        if "qwen" in class_name:
+            return "qwen"
+        if "glm" in class_name:  # also matches "chatglm"
+            return "glm"
+        return "qwen"
+
+    def _predict_qwen(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
+        from qwen_vl_utils import process_vision_info
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": [
+                {"type": "image", "image": image},
+                {"type": "text", "text": prompt or QWEN_USER_PROMPT},
+            ]},
+        ]
+
+        text = self._processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        image_inputs, video_inputs = process_vision_info(messages)
+
+        kwargs = dict(text=[text], images=image_inputs, padding=True, return_tensors="pt")
+        if video_inputs:
+            kwargs["videos"] = video_inputs
+
+        inputs = self._processor(**kwargs).to(self.device)
+
+        with torch.no_grad():
+            generated_ids = self._model.generate(**inputs, max_new_tokens=max_tokens)
+
+        # Keep only the new tokens: generate() returns the prompt tokens too.
+        new_ids = [out[len(in_ids):] for in_ids, out in zip(inputs.input_ids, generated_ids)]
+        return self._processor.batch_decode(new_ids, skip_special_tokens=True)[0].strip()
+
+    def _predict_glm(self, image: Image.Image, max_tokens: int, prompt: str | None = None) -> str:
+        messages = [
+            {"role": "user", "content": [
+                {"type": "image"},
+                {"type": "text", "text": prompt or GLM_USER_PROMPT},
+            ]}
+        ]
+        text = self._processor.apply_chat_template(messages, add_generation_prompt=True)
+        inputs = self._processor(text=text, images=image, return_tensors="pt").to(self.device)
+
+        with torch.no_grad():
+            outputs = self._model.generate(**inputs, max_new_tokens=max_tokens, do_sample=False)
+
+        input_length = inputs["input_ids"].shape[1]
+        return self._processor.decode(outputs[0][input_length:], skip_special_tokens=True).strip()

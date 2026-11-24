@@ -68,6 +68,8 @@ def _carregar(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: 
             gpu_memory_utilization=util,
             max_model_len=max_len,
             sampling_params={"max_tokens": 32},
+            chat_template_kwargs=settings.llm_chat_template_kwargs,
+            engine_kwargs=settings.llm_engine_kwargs,
         )
         modelo.load()
         return modelo

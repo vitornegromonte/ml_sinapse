@@ -1,10 +1,10 @@
 import pytest
 
-from models.ocr.registry import _MODEL_FACTORIES, create_model
 from models.ocr.base import AbstractOcrModel
 from models.ocr.dharma import DharmaOcrModel
 from models.ocr.glm import GlmOcrModel
 from models.ocr.mlflow_model import MlflowOcrModel
+from models.ocr.registry import _MODEL_FACTORIES, create_model
 
 
 class TestRegistry:

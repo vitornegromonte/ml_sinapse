@@ -25,6 +25,8 @@ def mock_redis():
     # ResultPublisher reads XLEN after each publish to notice a stream sitting
     # at its cap; a bare AsyncMock isn't orderable against an int.
     redis.xlen = AsyncMock(return_value=0)
+    # OCR checkpoint (services/ocr_checkpoint.py): an empty hash by default.
+    redis.hgetall = AsyncMock(return_value={})
     return redis
 
 
