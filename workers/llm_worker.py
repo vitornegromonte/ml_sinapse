@@ -31,6 +31,8 @@ class LlmWorker(BaseWorker):
             tensor_parallel_size=self.cfg.llm_tensor_parallel_size,
             dtype=self.cfg.llm_dtype,
             sampling_params=self.cfg.llm_sampling_params or {},
+            chat_template_kwargs=self.cfg.llm_chat_template_kwargs,
+            engine_kwargs=self.cfg.llm_engine_kwargs,
         )
         self._llm.load()
         self.logger.info("LLM model loaded (vLLM, %s)", self.cfg.llm_model_path)

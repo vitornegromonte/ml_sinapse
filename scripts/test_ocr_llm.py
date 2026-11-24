@@ -99,7 +99,7 @@ async def main():
     print(f"  GPU 0: +{ocr_pico} MB no pico da extração\n")
 
     base_llm, total_llm = _vram(1)
-    llm_path = settings.llm_model_path or "google/gemma-4-E4B-it"
+    llm_path = settings.llm_model_path
     print(
         f"Carregando modelo LLM ({llm_path}, util {settings.llm_gpu_memory_utilization}, "
         f"max_len {settings.llm_max_model_len or 'do modelo'})..."
@@ -109,7 +109,9 @@ async def main():
         device="cuda:1",
         gpu_memory_utilization=settings.llm_gpu_memory_utilization,
         max_model_len=settings.llm_max_model_len,
-        sampling_params={"max_tokens": 1024, "temperature": 0.3},
+        sampling_params=settings.llm_sampling_params,
+        chat_template_kwargs=settings.llm_chat_template_kwargs,
+        engine_kwargs=settings.llm_engine_kwargs,
     )
     llm.load()
     print(f"  GPU 1: +{_vram(1)[0] - base_llm} MB de modelo (contexto: {base_llm} MB)")

@@ -46,7 +46,12 @@ No default for `BACKEND_HOST` on purpose: compose fails fast instead of
 building broken connection strings. Workers don't retry an unreachable
 Postgres/Redis at startup. Extra env vars (all optional):
 `POSTGRES_ML_WORKER_PASSWORD`, `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`,
-`EMBEDDING_MODEL_NAME`, `LLM_MODEL_PATH`, `NER_MODEL_MINIO_PREFIX`.
+`EMBEDDING_MODEL_NAME`, `NER_MODEL_MINIO_PREFIX`.
+LLM: `LLM_MODEL_PATH` (padrão `maritaca-ai/S5-nano`; um id do Hugging Face é
+baixado na primeira execução para `/model-cache/huggingface`),
+`LLM_GPU_MEMORY_UTILIZATION` (0,25), `LLM_SAMPLING_PARAMS` e
+`LLM_CHAT_TEMPLATE_KWARGS` (JSON; o padrão desliga o modo de raciocínio) e
+`LLM_ENGINE_KWARGS` (JSON; veja o ADR-013).
 OCR tuning: `OCR_PAGE_BATCH_SIZE` (padrão 4), `OCR_RENDER_DPI` (200),
 `OCR_PARTIAL_TTL_SECONDS` (86400; 0 desliga o checkpoint de páginas),
 `OCR_PREDICT_TIMEOUT_SECONDS` (600). O `ocr-worker` guarda o cache de compilação
@@ -63,14 +68,15 @@ e `scripts/test_ocr_llm.py`), o roteamento que cabe é:
 | GPU | workers | VRAM |
 |---|---|---|
 | 0 | `ocr` + `embedding` + `linkage` | `ocr`: ~13 GB com `OCR_GPU_MEMORY_UTILIZATION=0.15` (padrão e máximo); `embedding` e `linkage` não foram medidos de novo |
-| 1 | `llm` | ~28 GB com `LLM_GPU_MEMORY_UTILIZATION=0.27` |
+| 1 | `llm` | ~24 GB com `LLM_GPU_MEMORY_UTILIZATION=0.25` (S5-nano; medido na versão fixada do vLLM, 0.22.1) |
 
 O `util` do vLLM é um **teto**, não o tamanho do modelo: ele carrega os pesos
 e preenche o resto com cache KV, que é o que dimensiona a concorrência. O piso
-é `(pesos + ativação + max_model_len × bytes_por_token) / placa` — para o `llm`
-(pesos 15,5 GiB, 36,7 KiB/token, contexto nativo de 131 072) isso dá 0,27;
-abaixo disso o vLLM recusa iniciar, a menos que `LLM_MAX_MODEL_LEN` seja
-reduzido. Para o `ocr` (Dharma-OCR-LITE: pesos 4,6 GiB, 36 KiB/token) o teto é
+é `(pesos + ativação + max_model_len × bytes_por_token) / placa`. Para o `llm`
+(S5-nano, só texto: pesos 8,0 GiB, ~32 KiB/token, contexto nativo de 262 144)
+medimos 0,25: cache KV de 13,6 GiB (442 mil tokens). Valores menores não foram
+testados; abaixo do piso o vLLM recusa iniciar, a menos que `LLM_MAX_MODEL_LEN`
+seja reduzido. Para o `ocr` (Dharma-OCR-LITE: pesos 4,6 GiB, 36 KiB/token) o teto é
 0,15 e o contexto padrão é `OCR_MAX_MODEL_LEN=24576`: medido numa placa de 95 GiB,
 o modelo ocupa +13 GB, com 6 GiB de cache KV (176 mil tokens, 7 páginas
 simultâneas de contexto cheio). No contexto nativo de 128 000 o vLLM reserva

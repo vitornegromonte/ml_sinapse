@@ -17,6 +17,15 @@ class LLMModel(BaseModelWrapper):
     which imported packages that are not dependencies. Deleted rather than
     kept behind an adapter — see docs/adr-010-bentoml-serving.md for the
     BentoML approach that was dropped.
+
+    Model-specific behavior comes from the caller, not from this class:
+      sampling_params: vLLM SamplingParams fields. Always set "max_tokens":
+          vLLM's own default is 16, which cuts a summary off after one line.
+      chat_template_kwargs: variables for the model's chat template, for
+          example {"enable_thinking": False} to turn off a reasoning mode.
+          A template that does not use a variable ignores it.
+      engine_kwargs: extra arguments for the vLLM engine, for example
+          {"language_model_only": True} to skip a vision encoder.
     """
 
     def __init__(
@@ -28,6 +37,8 @@ class LLMModel(BaseModelWrapper):
         max_model_len: int | None = None,
         tensor_parallel_size: int = 1,
         sampling_params: dict | None = None,
+        chat_template_kwargs: dict | None = None,
+        engine_kwargs: dict | None = None,
     ):
         self.model_path = model_path
         self.device = device
@@ -36,6 +47,14 @@ class LLMModel(BaseModelWrapper):
         self.max_model_len = max_model_len
         self.tensor_parallel_size = tensor_parallel_size
         self.sampling_params = sampling_params or {}
+        self.chat_template_kwargs = chat_template_kwargs or {}
+        self.engine_kwargs = engine_kwargs or {}
+
+        if "max_tokens" not in self.sampling_params:
+            logger.warning(
+                "sampling_params has no max_tokens: vLLM will stop after 16 tokens "
+                "and every summary will be cut off"
+            )
 
         self._llm: Any = None
         self._tokenizer: Any = None
@@ -57,6 +76,7 @@ class LLMModel(BaseModelWrapper):
         }
         if self.max_model_len is not None:
             kwargs["max_model_len"] = self.max_model_len
+        kwargs.update(self.engine_kwargs)
 
         self._llm = VLLM(**kwargs)
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_path)
@@ -83,6 +103,7 @@ class LLMModel(BaseModelWrapper):
                     [{"role": "user", "content": p}],
                     tokenize=False,
                     add_generation_prompt=True,
+                    **self.chat_template_kwargs,
                 )
                 for p in prompts
             ]

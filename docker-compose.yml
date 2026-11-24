@@ -76,7 +76,12 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MODEL_BASE_PATH=/model-cache
-      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-}
+      # Hugging Face id or a local path. An empty value would override the
+      # default in config.py and the engine would fail to start.
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-maritaca-ai/S5-nano}
+      # A Hugging Face id is downloaded on first use. Keep the download in the
+      # shared volume so a container restart does not fetch ~9 GB again.
+      - HF_HOME=/model-cache/huggingface
       # See ocr-worker's comment above — same asyncio.to_thread + vLLM fork issue.
       - VLLM_WORKER_MULTIPROC_METHOD=spawn
     deploy:

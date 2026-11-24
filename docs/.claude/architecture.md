@@ -150,7 +150,11 @@ Clustering supersedes the whole previous batch.
 7. OCR publishes `{document_id, text, text_length}` to `ocr:tasks:results`.
    Then it deletes the checkpoint hash. A failure before this point keeps it.
 8. The LLM worker consumes that stream.
-9. The LLM builds the Portuguese summary prompt and generates with vLLM.
+9. The LLM builds the Portuguese summary prompt and generates with vLLM. The
+   model is `maritaca-ai/S5-nano` (`llm_model_path`), in Instruct mode
+   (`llm_chat_template_kwargs`: `enable_thinking` off), with the sampling in
+   `llm_sampling_params`. It runs text only, at 25% of the GPU
+   (`llm_gpu_memory_utilization`) and the native 262,144-token context (ADR-013).
 10. The summary goes to `bronze/ml-results/llm/<document_id>`.
 11. The LLM publishes the result to `llm:tasks`.
 12. The backend consumes the result and writes `silver` with its own grants.

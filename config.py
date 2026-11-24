@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -131,14 +133,23 @@ class Settings(BaseSettings):
     # Only used as a fallback when ner_model_uri is unset.
     ner_model_minio_prefix: str = "ner/model-best"
 
-    llm_model_path: str = ""
-    llm_gpu_device: int = 0
-    llm_gpu_memory_utilization: float = 0.9
-    llm_max_model_len: int | None = None
-    llm_tensor_parallel_size: int = 1
-    llm_dtype: str = "auto"
-    llm_sampling_params: dict | None = None
-    llm_result_stream_maxlen: int = 50000
+    # ------------------------------------------------------------------ LLM
+    # The LLM worker (workers/llm_worker.py) summarizes the OCR text. The
+    # stream name `llm_stream` is with the other streams below.
+
+    # -- Model --
+    # Default: maritaca-ai/S5-nano (4B parameters, built on Qwen3.5-4B,
+    # Apache-2.0, Portuguese and English). It replaced google/gemma-4-E4B-it.
+    # See ADR-013. A Hugging Face id is downloaded on first use. A local path
+    # (for example under /model-cache) is read as it is.
+    llm_model_path: str = "maritaca-ai/S5-nano"
+    # Variables for the model's chat template. S5-nano starts in Think mode: it
+    # writes its reasoning before the answer. enable_thinking=False selects
+    # Instruct mode, which gives the answer only, as a summary needs. A model
+    # whose template has no such variable ignores it.
+    llm_chat_template_kwargs: dict[str, Any] = {"enable_thinking": False}
+
+    # -- Prompt --
     llm_prompt_template: str = (
         "Você é um assistente especializado em analisar documentos policiais.\n"
         "Abaixo está o texto extraído de um documento:\n\n"
@@ -150,6 +161,50 @@ class Settings(BaseSettings):
         "4. Provas documentais citadas\n\n"
         "Resumo:"
     )
+
+    # -- Inference --
+    # Sampling for each summary: the values the S5-nano card recommends for
+    # Instruct mode, plus max_tokens. Without max_tokens vLLM stops after 16
+    # tokens. presence_penalty 1.5 stops repetition loops, but it also
+    # discourages reusing names and numbers, so check it on real BOs.
+    llm_sampling_params: dict[str, Any] | None = {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0.0,
+        "presence_penalty": 1.5,
+        "max_tokens": 2048,
+    }
+
+    # -- GPU --
+    llm_gpu_device: int = 0
+    # Share of GPU memory for the LLM engine. Measured with S5-nano on a 95 GiB
+    # card, at the native 262,144-token context: 0.25 gives 8 GiB of weights
+    # (text only) and a 13.6 GiB KV cache (442k tokens). Lower values were not
+    # tried. The OCR engine has its own cap (ocr_gpu_memory_utilization).
+    llm_gpu_memory_utilization: float = 0.25
+    # None keeps the model's native context (262,144 for S5-nano). OCR text of
+    # a long PDF can be very large, so the worker does not cap it.
+    llm_max_model_len: int | None = None
+    llm_tensor_parallel_size: int = 1
+    llm_dtype: str = "auto"
+    # Extra vLLM engine arguments for S5-nano:
+    #   language_model_only skips the vision encoder the model ships with. The
+    #     worker sends text only, and the memory goes to the KV cache.
+    #   max_num_seqs caps the sequences that run together. S5-nano is a hybrid
+    #     model: most layers keep a fixed state per sequence, and vLLM 0.22.1
+    #     (the version pinned in requirements.txt) refuses to start when
+    #     max_num_seqs (default 1024) needs more state blocks than the memory
+    #     holds. The worker reads batch_size (8) messages at a time, so 32 is
+    #     ample.
+    llm_engine_kwargs: dict[str, Any] | None = {
+        "language_model_only": True,
+        "max_num_seqs": 32,
+    }
+
+    # -- Output --
+    # Cap of the results stream. See ocr_result_stream_maxlen.
+    llm_result_stream_maxlen: int = 50000
 
     ocr_stream: str = "ocr:tasks"
     ner_stream: str = "ner:tasks"

@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from config import Settings
 from workers.llm_worker import LlmWorker
 
 
@@ -242,3 +243,56 @@ class TestLlmWorker:
             await worker.process(llm_payload)
 
         mock_redis.xadd.assert_not_awaited()
+
+
+class TestLlmWorkerModelSettings:
+    def test_load_model_passes_every_llm_setting_to_the_model(self, mock_redis):
+        """Arrange: a worker with custom LLM settings and LLMModel patched.
+        Act: load the model.
+        Assert: LLMModel is built once with those settings, including the chat
+        template and engine kwargs, so config alone selects the model's mode.
+        """
+        cfg = Settings(
+            _env_file=None,
+            llm_model_path="org/some-model",
+            llm_gpu_device=1,
+            llm_gpu_memory_utilization=0.3,
+            llm_max_model_len=8192,
+            llm_tensor_parallel_size=2,
+            llm_dtype="bfloat16",
+            llm_sampling_params={"max_tokens": 100},
+            llm_chat_template_kwargs={"enable_thinking": False},
+            llm_engine_kwargs={"language_model_only": True},
+        )
+        with patch("workers.llm_worker.LLMModel") as mock_llm_cls:
+            worker = LlmWorker(cfg)
+
+            worker._load_model()
+
+        mock_llm_cls.assert_called_once_with(
+            model_path="org/some-model",
+            device="cuda:1",
+            gpu_memory_utilization=0.3,
+            max_model_len=8192,
+            tensor_parallel_size=2,
+            dtype="bfloat16",
+            sampling_params={"max_tokens": 100},
+            chat_template_kwargs={"enable_thinking": False},
+            engine_kwargs={"language_model_only": True},
+        )
+        mock_llm_cls.return_value.load.assert_called_once()
+
+    def test_default_settings_build_the_s5_nano_instruct_model(self):
+        """Arrange: a worker with the default settings and LLMModel patched.
+        Act: load the model.
+        Assert: it is S5-nano, in Instruct mode, text only, with a max_tokens.
+        """
+        with patch("workers.llm_worker.LLMModel") as mock_llm_cls:
+            LlmWorker(Settings(_env_file=None))._load_model()
+
+        kwargs = mock_llm_cls.call_args.kwargs
+        assert kwargs["model_path"] == "maritaca-ai/S5-nano"
+        assert kwargs["chat_template_kwargs"] == {"enable_thinking": False}
+        assert kwargs["engine_kwargs"] == {"language_model_only": True, "max_num_seqs": 32}
+        assert kwargs["gpu_memory_utilization"] == 0.25
+        assert kwargs["sampling_params"]["max_tokens"] > 16
