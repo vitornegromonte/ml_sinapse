@@ -47,6 +47,10 @@ building broken connection strings. Workers don't retry an unreachable
 Postgres/Redis at startup. Extra env vars (all optional):
 `POSTGRES_ML_WORKER_PASSWORD`, `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`,
 `EMBEDDING_MODEL_NAME`, `LLM_MODEL_PATH`, `NER_MODEL_MINIO_PREFIX`.
+OCR tuning: `OCR_PAGE_BATCH_SIZE` (padrão 4), `OCR_RENDER_DPI` (200),
+`OCR_PARTIAL_TTL_SECONDS` (86400; 0 desliga o checkpoint de páginas),
+`OCR_PREDICT_TIMEOUT_SECONDS` (600). O `ocr-worker` guarda o cache de compilação
+do vLLM no volume `vllm_cache` (`VLLM_CACHE_ROOT=/vllm-cache`).
 Put them in a `.env` next to `docker-compose.yml` (never committed).
 
 GPU note: `ocr`/`llm`/`embedding`/`linkage` reserve 1 GPU; `ner`/`cluster`
@@ -58,7 +62,7 @@ e `scripts/test_ocr_llm.py`), o roteamento que cabe é:
 
 | GPU | workers | VRAM |
 |---|---|---|
-| 0 | `ocr` + `embedding` + `linkage` | ~27 GB com `OCR_GPU_MEMORY_UTILIZATION=0.25` |
+| 0 | `ocr` + `embedding` + `linkage` | `ocr`: ~13 GB com `OCR_GPU_MEMORY_UTILIZATION=0.15` (padrão e máximo); `embedding` e `linkage` não foram medidos de novo |
 | 1 | `llm` | ~28 GB com `LLM_GPU_MEMORY_UTILIZATION=0.27` |
 
 O `util` do vLLM é um **teto**, não o tamanho do modelo: ele carrega os pesos
@@ -66,7 +70,12 @@ e preenche o resto com cache KV, que é o que dimensiona a concorrência. O piso
 é `(pesos + ativação + max_model_len × bytes_por_token) / placa` — para o `llm`
 (pesos 15,5 GiB, 36,7 KiB/token, contexto nativo de 131 072) isso dá 0,27;
 abaixo disso o vLLM recusa iniciar, a menos que `LLM_MAX_MODEL_LEN` seja
-reduzido. Para o `ocr` (pesos 2,2 GiB, 64 KiB/token) o piso é 0,13. Carregue
+reduzido. Para o `ocr` (Dharma-OCR-LITE: pesos 4,6 GiB, 36 KiB/token) o teto é
+0,15 e o contexto padrão é `OCR_MAX_MODEL_LEN=24576`: medido numa placa de 95 GiB,
+o modelo ocupa +13 GB, com 6 GiB de cache KV (176 mil tokens, 7 páginas
+simultâneas de contexto cheio). No contexto nativo de 128 000 o vLLM reserva
+memória para perfilar uma entrada máxima e o motor não inicia em 0,15 (cache KV
+disponível: −6,7 GiB). Carregue
 os workers de tamanho fixo antes dos de vLLM quando dividirem uma placa.
 
 ## Develop / test

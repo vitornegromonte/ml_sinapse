@@ -1,26 +1,18 @@
+"""GLM-OCR, the alternative OCR model."""
+from models.ocr import prompts
 from models.ocr.vllm_chat_base import VllmChatOcrModel
 
 
 class GlmOcrModel(VllmChatOcrModel):
-    """GLM-OCR served via vLLM.
+    """`zai-org/GLM-OCR` on vLLM. Select it with `OCR_MODEL_NAME=zai-org/GLM-OCR`.
 
-    Migrated from a transformers .generate() implementation.
-    Benchmarked as the strongest of 8 OCR models
-    tested against Portuguese MDPBench samples (Overall 85.1 vs. Dharma's
-    56.0), and is now the default production OCR model
-    (config.py's ocr_model_name).
+    It scored highest of 8 models on the Portuguese MDPBench samples (Overall
+    85.1, Dharma 56.0), but it is not the default. See
+    docs/adr-004-multimodal-ocr.md.
 
-    No CPU fallback and no image-resize step here, unlike the transformers
-    version this replaced — vLLM is GPU-only, and the benchmark ran this
-    exact model through vLLM's LLM.chat() with full-size images with no
-    resizing needed.
+    It answers with plain text, so it keeps the base class's `_postprocess`.
+    It runs on the GPU only, and it takes full-size images without resizing.
     """
 
-    SYSTEM_PROMPT = (
-        "Você é um assistente de transcrição de documentos, "
-        "sua função é extrair todo o texto de uma imagem"
-    )
-    USER_PROMPT = (
-        "Transcreva todo o texto presente nesta imagem com extrema "
-        "precisão, no idioma português do Brasil."
-    )
+    SYSTEM_PROMPT = prompts.SYSTEM_PROMPT
+    USER_PROMPT = prompts.GLM_USER_PROMPT

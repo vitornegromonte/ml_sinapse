@@ -14,6 +14,16 @@ from config import settings
 from services.database import create_db_engine, create_session_factory
 
 
+class PermanentTaskError(ValueError):
+    """The task can never succeed, so retrying it is pointless.
+
+    Raise it for an invalid payload or a document that breaks a hard limit.
+    BaseWorker sends the message to the dead-letter stream at once, without
+    the retry delays. It is a ValueError so existing handlers keep working.
+    Do NOT raise it for transient faults (network, Redis, MinIO, GPU memory).
+    """
+
+
 class BaseWorker(ABC):
     # Only workers that override process_batch (and so get one GPU call for
     # the whole batch) may read more than one message per XREADGROUP: a serial
@@ -186,6 +196,13 @@ class BaseWorker(ABC):
 
     async def _fail(self, message_id: str, data: dict, exc: Exception) -> None:
         self.logger.error("Error processing %s: %s", message_id, exc)
+        if isinstance(exc, PermanentTaskError):
+            self.logger.warning(
+                "Permanent failure for %s — dead-lettering without retry", message_id
+            )
+            await self._dead_letter(message_id, data, str(exc))
+            await self._ack(message_id)
+            return
         retries = await self._increment_retries(message_id)
         if retries >= self.cfg.max_retries:
             await self._dead_letter(message_id, data, str(exc))

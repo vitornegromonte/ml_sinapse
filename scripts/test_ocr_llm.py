@@ -52,7 +52,7 @@ PROMPT_TEMPLATE = (
 async def extract_text(pdf_path: Path, ocr, corrector) -> str:
     """Extrai texto do PDF: texto direto + OCR em páginas/regiões escaneadas."""
     chunks = []
-    extractor = PdfExtractor(dpi=150)
+    extractor = PdfExtractor(dpi=settings.ocr_render_dpi)
     async for kind, content, _ in extractor.extract_chunks(pdf_path):
         if kind == "text":
             chunks.append(content)

@@ -1,3 +1,4 @@
+"""Load the image of an OCR task from a URL, a base64 string, or a local file."""
 import base64
 import io
 from pathlib import Path
@@ -9,11 +10,13 @@ from PIL import Image
 class ImageLoader:
     """Loads an image from a URL, a base64 blob, or a local path.
 
-    A local path is only read from inside `allowed_root`: the path is resolved
-    (symlinks followed) and must stay under that directory. `image_path` comes
-    from the task payload, so without a confinement root it is an
-    arbitrary-file-read vector — no `allowed_root` means local paths are
-    rejected outright.
+    Security: `image_path` comes from the task payload. A local path is read
+    only from inside `allowed_root`: the path is resolved (symlinks followed)
+    and must stay under that directory. Without `allowed_root`, local paths are
+    rejected, because they would let a task read any file.
+
+    Errors: bad input raises ValueError (or PIL's UnidentifiedImageError). A
+    network fault raises a `requests` exception, which is worth a retry.
     """
 
     def __init__(
@@ -25,6 +28,11 @@ class ImageLoader:
         self._allowed_root = Path(allowed_root).resolve() if allowed_root else None
 
     def load(self, data: dict) -> Image.Image:
+        """Load the image named by the first of image_url, image_base64, image_path.
+
+        The image may be in any mode (RGB, gray, palette...). Pillow decodes it
+        lazily, so a corrupt file can fail later, at the first pixel access.
+        """
         if "image_url" in data:
             return self._from_url(data["image_url"])
 
@@ -49,6 +57,7 @@ class ImageLoader:
         return Image.open(self._resolve_local_path(path))
 
     def _resolve_local_path(self, path: str) -> Path:
+        """Return `path` resolved, if it is inside the allowed root. Else raise ValueError."""
         if self._allowed_root is None:
             raise ValueError(
                 "image_path is disabled: set ocr_image_allowed_root "
