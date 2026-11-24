@@ -91,6 +91,7 @@ tests/
 ├── conftest.py              fixtures for all tests, and the vLLM stand-in
 ├── fixtures/                data files (compose mounts fixtures/images)
 ├── test_config.py           config.py
+├── test_compose.py          docker-compose.yml: every worker has the metrics port and healthcheck
 ├── models/                  models/
 │   ├── test_llm_model.py
 │   ├── test_tasks.py
@@ -100,7 +101,8 @@ tests/
 │                            test_log_manifests_to_mlflow
 ├── services/                services/: one file per module
 └── workers/                 workers/
-    ├── test_base_worker.py, test_run_worker.py, test_startup_compat.py
+    ├── test_base_worker.py, test_base_worker_telemetry.py, test_run_worker.py,
+    │   test_startup_compat.py
     ├── test_{cluster,embedding,linkage_scoring,llm,ner,scoring}_worker.py
     └── ocr/                 a folder, because the OCR worker has many behaviors
         ├── conftest.py      fixtures: mock_model, worker

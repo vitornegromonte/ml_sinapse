@@ -143,6 +143,38 @@ MLflow.
 
 ---
 
+## Observability
+
+Set `METRICS_PORT` (compose sets 9100) and each worker serves, on that port
+inside its container (ADR-015):
+
+| Path | Meaning |
+|---|---|
+| `/metrics` | Prometheus metrics |
+| `/healthz` | 200 while the worker loop makes progress; 503 when it stalls (limit: poll timeout + 30 s) |
+| `/readyz` | 200 while the loop runs and Redis answers. It does not wait for the model: models load on the first task |
+
+| Metric | Use |
+|---|---|
+| `ml_messages_total{outcome}` | `success`, `retry`, `dead_letter`, `permanent` |
+| `ml_process_duration_seconds`, `ml_batch_size` | latency and batch size, per `process_batch` call |
+| `ml_queue_length`, `ml_queue_pending`, `ml_dead_letter_length` | queue depth, refreshed every 15 s |
+| `ml_result_stream_length{result_stream}` | how close a result stream is to its cap |
+| `ml_model_loaded`, `ml_model_info{manifest_id,model}` | model state and the recipe the worker runs |
+| `ml_messages_reclaimed_total` | messages taken over after a crash or a missed ack |
+
+Good first alerts: `ml_dead_letter_length` rising; `ml_queue_length` high with no
+`success`; `ml_result_stream_length` near the cap (`*_result_stream_maxlen`);
+a container `unhealthy`.
+
+Logs: `LOG_FORMAT=json` writes one JSON object per line, with `stream`,
+`manifest_id`, `model`, and for each message `message_id` and the ids found in
+the payload (`pipeline_run_id`, `document_id`, `boletim_id`, linkage pair).
+The default `text` format is unchanged. Document text is never logged or used
+as a label.
+
+---
+
 ## Flows
 
 ### 1. PDF ingest — OCR → LLM summary
@@ -317,6 +349,11 @@ retry → DLQ path.
 - **Most of `requirements.txt` is not pinned.** Only torch, torchvision,
   transformers, vllm and scikit-learn have versions. A rebuild can change the
   rest, and `pip-audit` cannot audit the file.
+- **Scoring `features` may not reach the worker.** `ScoringTask.features` is a
+  dict, but a Redis stream field is a string, and a JSON string fails
+  validation (checked against a real Redis). Unless the backend encodes
+  `features` another way, the task goes to the dead-letter stream. Confirm how
+  the producer sends it.
 - **Old `gold.model_registry` rows keep their old values.** The linkage row
   already written records `C=1000.0`; the artifact has `C=10.0`. A backend
   migration must fix it.

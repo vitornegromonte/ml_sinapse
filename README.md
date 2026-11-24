@@ -56,6 +56,9 @@ Modelos: cada modelo é fixado em `artifacts/models.lock.json` (ADR-014); atuali
 com `python scripts/update_model_lock.py` (simulação) e `--write`.
 `ALLOW_INCOMPATIBLE_MODELS=true` deixa o worker de embedding ou de linkage
 iniciar com um encoder diferente do da calibração do classificador.
+Observabilidade (ADR-015): `METRICS_PORT` (o compose usa 9100) liga `/metrics`,
+`/healthz` e `/readyz` em cada worker; `LOG_FORMAT=json` escreve um objeto JSON
+por linha com `message_id`, `pipeline_run_id` e `document_id`.
 OCR tuning: `OCR_PAGE_BATCH_SIZE` (padrão 4), `OCR_RENDER_DPI` (200),
 `OCR_PARTIAL_TTL_SECONDS` (86400; 0 desliga o checkpoint de páginas),
 `OCR_PREDICT_TIMEOUT_SECONDS` (600). O `ocr-worker` guarda o cache de compilação
