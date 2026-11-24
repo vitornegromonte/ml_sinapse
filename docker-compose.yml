@@ -16,6 +16,22 @@
 # Bring core services up first — these workers don't retry a failed startup
 # connection, they'll just crash if Postgres/Redis aren't reachable yet.
 
+# Shared by every worker. /healthz is 200 while the worker loop makes progress,
+# so "unhealthy" means the loop stalled (ADR-015). The probe is plain Python
+# because the image has no curl. start_period covers the first-run model
+# download and load. Compose only marks the container unhealthy; restart it
+# with your orchestrator or a tool such as autoheal.
+x-worker-healthcheck: &worker-healthcheck
+  test:
+    - CMD
+    - python
+    - -c
+    - "import urllib.request; urllib.request.urlopen('http://localhost:9100/healthz', timeout=3)"
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 300s
+
 services:
   ocr-worker:
     build: .
@@ -30,8 +46,10 @@ services:
       # vLLM's compile cache. The worker restarts itself after a model timeout,
       # and without this volume every restart compiles the kernels again.
       - vllm_cache:/vllm-cache
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       # sinapse_ml: least-privilege role, read silver / write gold (never
       # silver). See sinapse/backend/alembic/versions/0004_add_ml_login_role.py (monorepo history).
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
@@ -69,8 +87,10 @@ services:
     command: python run_worker.py llm
     volumes:
       - model_cache:/model-cache
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
       - MINIO_ENDPOINT=http://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
@@ -98,8 +118,10 @@ services:
     command: python run_worker.py ner
     volumes:
       - model_cache:/model-cache
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
       - MINIO_ENDPOINT=http://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
@@ -116,8 +138,10 @@ services:
     command: python run_worker.py embedding
     volumes:
       - model_cache:/model-cache
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
       - MODEL_BASE_PATH=/model-cache
       # neuralmind/bert-base-portuguese-cased via sentence-transformers —
@@ -138,8 +162,10 @@ services:
     command: python run_worker.py linkage
     volumes:
       - model_cache:/model-cache
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
       - MODEL_BASE_PATH=/model-cache
       # Mesmo encoder do embedding-worker (reencoda entidades descritivas
@@ -161,8 +187,10 @@ services:
     build: .
     container_name: ml_sinapse_cluster_worker
     command: python run_worker.py cluster
+    healthcheck: *worker-healthcheck
     environment:
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
       - ML_DATABASE_URL=postgresql+asyncpg://sinapse_ml:${POSTGRES_ML_WORKER_PASSWORD:-change_me_ml_worker}@${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:5433/sinapse_db
       # networkx/SQL puro sobre gold.bo_relacionado já calculado — sem
       # encoder, sem classificador, sem GPU (ver workers/cluster_worker.py).
@@ -171,12 +199,14 @@ services:
     build: .
     container_name: ml_sinapse_scoring_worker
     command: python run_worker.py scoring
+    healthcheck: *worker-healthcheck
     environment:
       # Redis only: the score is arithmetic over the task payload (weights
       # baked into the image at /app/artifacts). No DB/MinIO creds, no GPU —
       # BaseWorker builds an unused engine from the default DSN, it never
       # connects. See workers/scoring_worker.py.
       - REDIS_URL=redis://${BACKEND_HOST:?Set BACKEND_HOST to the backend machine's IP}:6380/0
+      - METRICS_PORT=9100
 
 volumes:
   model_cache:
