@@ -28,10 +28,11 @@ from config import settings
 from models.embedding_model import SentenceTransformerEncoder
 from models.tasks import EmbeddingTask
 from services.gold import get_or_create_model_id
+from services.model_compat import check_encoder_matches_classifier
+from services.model_manifest import build_manifest, revision_for
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_encoder"
-MODEL_VERSION = "neuralmind/bert-base-portuguese-cased"
 
 
 class EmbeddingWorker(BaseWorker):
@@ -39,6 +40,11 @@ class EmbeddingWorker(BaseWorker):
 
     def __init__(self, cfg=settings):
         super().__init__(cfg.embedding_stream, cfg)
+        # A different encoder means a different vector space, and the linkage
+        # classifier was calibrated on one. Refuse to start rather than write
+        # vectors that make every score wrong (ADR-014).
+        check_encoder_matches_classifier(cfg)
+        self._manifest = build_manifest("embedding", cfg)
         self._encoder: SentenceTransformerEncoder | None = None
 
     def _load_model(self) -> None:
@@ -47,7 +53,11 @@ class EmbeddingWorker(BaseWorker):
             if self._cuda_available()
             else "cpu"
         )
-        self._encoder = SentenceTransformerEncoder(self.cfg.embedding_model_name, device=device)
+        self._encoder = SentenceTransformerEncoder(
+            self.cfg.embedding_model_name,
+            device=device,
+            revision=revision_for(self.cfg.embedding_model_name, self.cfg),
+        )
         self._encoder.load()
 
     @staticmethod
@@ -136,8 +146,12 @@ class EmbeddingWorker(BaseWorker):
                     model_id = await get_or_create_model_id(
                         db,
                         MODEL_NAME,
-                        MODEL_VERSION,
-                        {"library": "sentence-transformers"},
+                        self.cfg.embedding_model_name,
+                        {
+                            "library": "sentence-transformers",
+                            "revision": self._manifest.identity["revision"],
+                            "manifest_id": self._manifest.manifest_id,
+                        },
                     )
 
                     # The "never two current rows" guarantee depends on the

@@ -290,3 +290,89 @@ class TestOcrWorkerModelLifecycle:
                 w.run()
 
             mock_model.unload.assert_called_once()
+
+
+class TestOcrWorkerRevisionPin:
+    def test_load_model_passes_the_pinned_revision(self, tmp_path):
+        """Arrange: a lock that pins the OCR model, and create_model patched.
+        Act: load the model.
+        Assert: create_model gets that revision.
+        """
+        import json
+
+        lock = tmp_path / "lock.json"
+        lock.write_text(json.dumps({
+            "lock_version": 1,
+            "huggingface": {"Dharma-AI/Dharma-OCR-LITE": {"revision": "f" * 40}},
+        }))
+        cfg = Settings(_env_file=None, model_lock_path=str(lock))
+        with patch("workers.ocr_worker.create_model") as mock_create:
+            OcrWorker(cfg)._load_model()
+
+        assert mock_create.call_args.kwargs["revision"] == "f" * 40
+
+    def test_load_model_without_a_pin_passes_none(self, tmp_path):
+        """Arrange: a lock that pins nothing.
+        Act: load the model.
+        Assert: create_model gets revision=None.
+        """
+        import json
+
+        lock = tmp_path / "empty.json"
+        lock.write_text(json.dumps({"lock_version": 1}))
+        cfg = Settings(_env_file=None, model_lock_path=str(lock))
+        with patch("workers.ocr_worker.create_model") as mock_create:
+            OcrWorker(cfg)._load_model()
+
+        assert mock_create.call_args.kwargs["revision"] is None
+
+
+class TestOcrWorkerLineage:
+    async def _run_two_tasks(self, worker):
+        with patch("workers.ocr_worker.ImageLoader.load") as mock_load:
+            mock_load.return_value = Image.new("RGB", (100, 50))
+            await worker.process({"document_id": "d1", "image_base64": "x"})
+            await worker.process({"document_id": "d2", "image_base64": "x"})
+
+    async def test_the_result_message_carries_the_manifest(self, worker, mock_redis):
+        """Arrange: an OCR worker.
+        Act: process an image task.
+        Assert: the message on the results stream has the worker's manifest_id and model.
+        """
+        await self._run_two_tasks(worker)
+
+        fields = mock_redis.xadd.call_args_list[0].args[1]
+        assert fields["manifest_id"] == worker._manifest.manifest_id
+        assert fields["model"] == worker._manifest.model
+
+    async def test_the_bronze_object_carries_the_manifest_as_metadata(self, worker):
+        """Arrange: an OCR worker.
+        Act: process an image task.
+        Assert: the text is saved to bronze with the lineage as object metadata.
+        """
+        await self._run_two_tasks(worker)
+
+        saves = [c for c in worker._storage.save.call_args_list if c.kwargs["prefix"] == "ocr"]
+        assert saves[0].kwargs["metadata"] == worker._manifest.lineage()
+
+    async def test_the_manifest_document_is_published_once(self, worker):
+        """Arrange: an OCR worker.
+        Act: process two tasks.
+        Assert: the manifest document is written to bronze one time, not per task.
+        """
+        await self._run_two_tasks(worker)
+
+        manifests = [c for c in worker._storage.save.call_args_list if c.kwargs["prefix"] == "manifests"]
+        assert len(manifests) == 1
+        assert manifests[0].kwargs["document_id"] == worker._manifest.manifest_id
+
+    def test_the_manifest_names_the_configured_model_and_its_pin(self, worker):
+        """Arrange: a worker with the default settings.
+        Act: read its manifest.
+        Assert: Dharma-OCR-LITE is named, with the settings that shape its output.
+        """
+        identity = worker._manifest.identity
+
+        assert identity["model"] == "Dharma-AI/Dharma-OCR-LITE"
+        assert identity["render_dpi"] == 200
+        assert identity["repetition_penalty"] == 1.05

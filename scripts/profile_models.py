@@ -34,6 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings  # noqa: E402
+from services.model_manifest import revision_for  # noqa: E402
 
 MARCADOR = "__PERFIL__"
 MODELOS = ["ocr", "llm", "embedding", "linkage"]
@@ -78,7 +79,11 @@ def _carregar(nome: str, gpu: int, util: float, max_len: int | None, cache_dir: 
     # cada um paga o próprio contexto CUDA. O classificador do linkage é CPU.
     from models.embedding_model import SentenceTransformerEncoder
 
-    encoder = SentenceTransformerEncoder(settings.embedding_model_name, device=f"cuda:{gpu}")
+    encoder = SentenceTransformerEncoder(
+        settings.embedding_model_name,
+        device=f"cuda:{gpu}",
+        revision=revision_for(settings.embedding_model_name, settings),
+    )
     encoder.load()
     return encoder
 

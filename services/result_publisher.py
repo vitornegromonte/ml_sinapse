@@ -6,16 +6,31 @@ logger = logging.getLogger(__name__)
 
 
 class ResultPublisher:
-    def __init__(self, redis: AsyncRedis, stream: str, maxlen: int = 1000):
+    """Publishes a worker's result to `<stream>:results`.
+
+    `lineage` is a dict of extra fields (manifest_id, model) added to every
+    message, so the consumer can tell which model recipe wrote it. Fields are
+    only ever added: the consumer reads the ones it knows (ADR-014).
+    """
+
+    def __init__(
+        self,
+        redis: AsyncRedis,
+        stream: str,
+        maxlen: int = 1000,
+        lineage: dict[str, str] | None = None,
+    ):
         self._redis = redis
         self._stream = stream
         self._maxlen = maxlen
+        self._lineage = dict(lineage or {})
 
     async def publish(self, data: dict, text: str) -> None:
         result = {
             "document_id": str(data.get("document_id", "")),
             "text": text,
             "text_length": str(len(text)),
+            **self._lineage,
         }
         stream = f"{self._stream}:results"
 

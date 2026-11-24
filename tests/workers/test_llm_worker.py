@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -279,6 +280,7 @@ class TestLlmWorkerModelSettings:
             sampling_params={"max_tokens": 100},
             chat_template_kwargs={"enable_thinking": False},
             engine_kwargs={"language_model_only": True},
+            revision=None,
         )
         mock_llm_cls.return_value.load.assert_called_once()
 
@@ -287,8 +289,9 @@ class TestLlmWorkerModelSettings:
         Act: load the model.
         Assert: it is S5-nano, in Instruct mode, text only, with a max_tokens.
         """
+        lock = Path(__file__).resolve().parents[2] / "artifacts/models.lock.json"
         with patch("workers.llm_worker.LLMModel") as mock_llm_cls:
-            LlmWorker(Settings(_env_file=None))._load_model()
+            LlmWorker(Settings(_env_file=None, model_lock_path=str(lock)))._load_model()
 
         kwargs = mock_llm_cls.call_args.kwargs
         assert kwargs["model_path"] == "maritaca-ai/S5-nano"
@@ -296,3 +299,49 @@ class TestLlmWorkerModelSettings:
         assert kwargs["engine_kwargs"] == {"language_model_only": True, "max_num_seqs": 32}
         assert kwargs["gpu_memory_utilization"] == 0.25
         assert kwargs["sampling_params"]["max_tokens"] > 16
+        assert kwargs["revision"] == "fe3a3581c33cb22917770ef1987b7c6e30929425"
+
+
+class TestLlmWorkerLineage:
+    async def test_the_summary_message_carries_the_manifest(self, worker, mock_redis, llm_payload):
+        """Arrange: an LLM worker.
+        Act: process a task.
+        Assert: the message has the worker's manifest_id and model.
+        """
+        await worker.process(llm_payload)
+
+        fields = mock_redis.xadd.call_args.args[1]
+        assert fields["manifest_id"] == worker._manifest.manifest_id
+        assert fields["model"] == worker._manifest.model
+
+    async def test_the_bronze_summary_carries_the_manifest_as_metadata(self, worker, llm_payload):
+        """Arrange: an LLM worker.
+        Act: process a task.
+        Assert: the summary is saved with the lineage as object metadata.
+        """
+        await worker.process(llm_payload)
+
+        saves = [c for c in worker._storage.save.call_args_list if c.kwargs["prefix"] == "llm"]
+        assert saves[0].kwargs["metadata"] == worker._manifest.lineage()
+
+    async def test_the_manifest_document_is_published_once(self, worker, llm_payload):
+        """Arrange: an LLM worker.
+        Act: process two tasks.
+        Assert: the manifest document is written one time.
+        """
+        await worker.process(llm_payload)
+        await worker.process({**llm_payload, "document_id": "bo-124"})
+
+        manifests = [c for c in worker._storage.save.call_args_list if c.kwargs["prefix"] == "manifests"]
+        assert len(manifests) == 1
+
+    def test_the_manifest_records_the_prompt_and_the_sampling(self, worker):
+        """Arrange: a worker with the default settings.
+        Act: read its manifest.
+        Assert: the prompt hash, the sampling, and the Instruct-mode switch are in it.
+        """
+        identity = worker._manifest.identity
+
+        assert identity["prompt_sha"]
+        assert identity["sampling_params"]["max_tokens"] >= 1024
+        assert identity["chat_template_kwargs"] == {"enable_thinking": False}

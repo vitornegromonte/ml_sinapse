@@ -169,3 +169,40 @@ async def test_encode_failure_is_reported_for_every_ready_item(worker, db, model
 
     assert all(isinstance(e, RuntimeError) for e in errors)
     assert _inserted(db) == []
+
+
+def test_load_model_pins_the_encoder_revision(tmp_path):
+    """Arrange: a lock that pins the encoder, and the encoder class patched.
+    Act: load the embedding worker's model.
+    Assert: the encoder is built with the pinned revision.
+    """
+    import json
+
+    from config import Settings
+
+    lock = tmp_path / "lock.json"
+    lock.write_text(json.dumps({
+        "lock_version": 1,
+        "huggingface": {"neuralmind/bert-base-portuguese-cased": {"revision": "a" * 40}},
+    }))
+    cfg = Settings(_env_file=None, model_lock_path=str(lock))
+    with patch("workers.embedding_worker.SentenceTransformerEncoder") as mock_cls:
+        EmbeddingWorker(cfg)._load_model()
+
+    assert mock_cls.call_args.kwargs["revision"] == "a" * 40
+
+
+async def test_the_registry_version_is_the_configured_encoder_not_a_constant(worker, db):
+    """Arrange: a worker, and get_or_create_model_id patched so the call can be read.
+    Act: process one BO.
+    Assert: the registry is asked for the configured encoder as the version, with
+    its revision and manifest id in the hyperparameters.
+    """
+    with patch("workers.embedding_worker.get_or_create_model_id", AsyncMock(return_value=7)) as registry:
+        await worker.process({"boletim_id": 1})
+
+    args = registry.call_args.args
+    assert args[1] == "bo_linkage_encoder"
+    assert args[2] == worker.cfg.embedding_model_name
+    assert args[3]["manifest_id"] == worker._manifest.manifest_id
+    assert args[3]["revision"] == worker._manifest.identity["revision"]

@@ -112,3 +112,23 @@ class TestBuildMinioClient:
 
         assert minio_cls.call_args.args[0] == "minio:9000"
         assert minio_cls.call_args.kwargs["secure"] is False
+
+
+class TestStorageMetadata:
+    def test_metadata_reaches_put_object(self, storage, mock_minio):
+        """Arrange: a storage service and lineage metadata.
+        Act: save an object with that metadata.
+        Assert: put_object receives it as the object's user metadata.
+        """
+        storage.save("ocr", "doc-1", b"x", metadata={"manifest_id": "abc", "model": "m@1"})
+
+        assert mock_minio.put_object.call_args.kwargs["metadata"] == {"manifest_id": "abc", "model": "m@1"}
+
+    def test_no_metadata_passes_none(self, storage, mock_minio):
+        """Arrange: a storage service.
+        Act: save an object with no metadata.
+        Assert: put_object gets metadata=None, as before.
+        """
+        storage.save("ocr", "doc-1", b"x")
+
+        assert mock_minio.put_object.call_args.kwargs["metadata"] is None

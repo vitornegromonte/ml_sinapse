@@ -4,6 +4,7 @@ import logging
 from config import settings
 from models.llm_model import LLMModel
 from models.tasks import LlmTask
+from services.model_manifest import build_manifest, publish_manifest, revision_for
 from services.result_publisher import ResultPublisher
 from services.storage import StorageService
 from workers.base_worker import BaseWorker
@@ -18,6 +19,9 @@ class LlmWorker(BaseWorker):
 
     def __init__(self, cfg=settings):
         super().__init__(cfg.ocr_stream + ":results", cfg)
+        # What exactly this worker runs; its id goes on every summary (ADR-014).
+        self._manifest = build_manifest("llm", cfg)
+        self._manifest_published = False
         self._llm: LLMModel | None = None
         self._result_publisher: ResultPublisher | None = None
         self._storage: StorageService | None = None
@@ -33,6 +37,7 @@ class LlmWorker(BaseWorker):
             sampling_params=self.cfg.llm_sampling_params or {},
             chat_template_kwargs=self.cfg.llm_chat_template_kwargs,
             engine_kwargs=self.cfg.llm_engine_kwargs,
+            revision=revision_for(self.cfg.llm_model_path, self.cfg),
         )
         self._llm.load()
         self.logger.info("LLM model loaded (vLLM, %s)", self.cfg.llm_model_path)
@@ -58,6 +63,7 @@ class LlmWorker(BaseWorker):
                 redis=self.redis,
                 stream=self.cfg.llm_stream,
                 maxlen=self.cfg.llm_result_stream_maxlen,
+                lineage=self._manifest.lineage(),
             )
 
     def _build_prompt(self, text: str) -> str:
@@ -130,10 +136,14 @@ class LlmWorker(BaseWorker):
             # of publishing a result that never landed in bronze.
             try:
                 self._ensure_storage()
+                if not self._manifest_published:
+                    publish_manifest(self._storage, self._manifest)
+                    self._manifest_published = True
                 self._storage.save(
                     prefix="llm",
                     document_id=doc_id,
                     data=summary.encode("utf-8"),
+                    metadata=self._manifest.lineage(),
                 )
 
                 self._ensure_publisher()

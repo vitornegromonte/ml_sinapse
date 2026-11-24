@@ -46,8 +46,13 @@ class StorageService:
         document_id: str,
         data: bytes,
         content_type: str = "text/plain",
+        metadata: dict[str, str] | None = None,
     ) -> str:
         """Write an object to bronze.
+
+        `metadata` becomes the object's user metadata (x-amz-meta-*): a reader
+        can see which model wrote it without reading the Redis message. Values
+        must be ASCII.
 
         Raises on failure rather than returning None: the caller notifies the
         backend about this text, and a swallowed write means the text lives
@@ -62,6 +67,7 @@ class StorageService:
                 io.BytesIO(data),
                 len(data),
                 content_type=content_type,
+                metadata=metadata,
             )
             logger.info("Saved %s to %s/%s", path, self._bucket, path)
             return path

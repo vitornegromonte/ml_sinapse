@@ -103,3 +103,14 @@ async def test_membros_sao_inseridos_em_lote_por_cluster():
         [{"cluster_id": 42, "boletim_id": 1}, {"cluster_id": 42, "boletim_id": 2}],
         [{"cluster_id": 42, "boletim_id": 3}],
     ]
+
+
+def test_the_worker_has_a_cluster_manifest():
+    """Arrange: a cluster worker with the default settings.
+    Act: read its manifest.
+    Assert: it is the cluster stage and records the threshold it clusters at.
+    """
+    manifest = ClusterWorker()._manifest
+
+    assert manifest.stage == "cluster"
+    assert manifest.identity["score_threshold"] == 0.9

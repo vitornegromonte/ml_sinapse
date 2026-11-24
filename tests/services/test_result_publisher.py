@@ -70,3 +70,35 @@ class TestResultPublisher:
             await pub.publish({"document_id": "d1"}, "texto")
 
         assert caplog.text == ""
+
+
+class TestResultPublisherLineage:
+    async def test_lineage_fields_are_added_to_every_message(self, mock_redis):
+        """Arrange: a publisher built with lineage fields.
+        Act: publish two results.
+        Assert: both messages carry the manifest_id and model next to the usual fields.
+        """
+        pub = ResultPublisher(
+            mock_redis, "ocr:tasks", maxlen=100,
+            lineage={"manifest_id": "abc123def456", "model": "org/m@1234567890ab"},
+        )
+
+        await pub.publish({"document_id": "d1"}, "um")
+        await pub.publish({"document_id": "d2"}, "dois")
+
+        for call in mock_redis.xadd.call_args_list:
+            fields = call.args[1]
+            assert fields["manifest_id"] == "abc123def456"
+            assert fields["model"] == "org/m@1234567890ab"
+            assert {"document_id", "text", "text_length"} <= set(fields)
+
+    async def test_without_lineage_the_message_is_unchanged(self, mock_redis):
+        """Arrange: a publisher with no lineage.
+        Act: publish a result.
+        Assert: only the three original fields are written.
+        """
+        pub = ResultPublisher(mock_redis, "ocr:tasks", maxlen=100)
+
+        await pub.publish({"document_id": "d1"}, "um")
+
+        assert set(mock_redis.xadd.call_args.args[1]) == {"document_id", "text", "text_length"}

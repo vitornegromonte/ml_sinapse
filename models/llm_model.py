@@ -26,6 +26,8 @@ class LLMModel(BaseModelWrapper):
           A template that does not use a variable ignores it.
       engine_kwargs: extra arguments for the vLLM engine, for example
           {"language_model_only": True} to skip a vision encoder.
+      revision: the pinned Hugging Face commit (artifacts/models.lock.json) for
+          the weights and the tokenizer. None fetches the default branch.
     """
 
     def __init__(
@@ -39,6 +41,7 @@ class LLMModel(BaseModelWrapper):
         sampling_params: dict | None = None,
         chat_template_kwargs: dict | None = None,
         engine_kwargs: dict | None = None,
+        revision: str | None = None,
     ):
         self.model_path = model_path
         self.device = device
@@ -49,6 +52,7 @@ class LLMModel(BaseModelWrapper):
         self.sampling_params = sampling_params or {}
         self.chat_template_kwargs = chat_template_kwargs or {}
         self.engine_kwargs = engine_kwargs or {}
+        self.revision = revision
 
         if "max_tokens" not in self.sampling_params:
             logger.warning(
@@ -76,10 +80,14 @@ class LLMModel(BaseModelWrapper):
         }
         if self.max_model_len is not None:
             kwargs["max_model_len"] = self.max_model_len
+        if self.revision:
+            kwargs["revision"] = self.revision
+            kwargs["tokenizer_revision"] = self.revision
         kwargs.update(self.engine_kwargs)
 
         self._llm = VLLM(**kwargs)
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        tokenizer_args = {"revision": self.revision} if self.revision else {}
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_path, **tokenizer_args)
 
         logger.info(
             "vLLM engine loaded (model=%s, gpu_mem=%.2f, tp=%d)",

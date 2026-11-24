@@ -39,6 +39,12 @@ from services.entity_normalization import (
     normalizar_valor_entidade,
 )
 from services.gold import get_or_create_model_id
+from services.model_compat import (
+    check_classifier_file,
+    check_encoder_matches_classifier,
+    check_loaded_classifier,
+)
+from services.model_manifest import build_manifest, revision_for
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_classifier"
@@ -61,6 +67,14 @@ SCHEMA_ENTIDADES = [
 ]
 N_ENT_TIPOS = len(SCHEMA_ENTIDADES)
 ENT2IDX = {e: i for i, e in enumerate(SCHEMA_ENTIDADES)}
+
+# Ordem EXATA esperada pelo classificador — não reordenar. É a identidade do
+# espaço de features: o manifesto do modelo (services/model_manifest.py) usa
+# esta lista, então mudá-la muda o manifest_id.
+FEATURE_NAMES = (
+    "sim_texto", "sim_geo", "sim_data", "sim_identificador",
+    "sim_local_exato", "sim_descricao", "sim_perfil",
+)
 
 TIPOS_LOCAL_EXATO = {"LOCAL_AREA", "LOCAL_ESTABELECIMENTO", "LOCAL_COMODO"}
 TIPOS_DESCRITIVOS_PADRAO = {"PESSOA_DESCRICAO", "OBJETO_GERAL", "OBJETO_ARMA", "OBJETO_VEICULO"}
@@ -97,6 +111,11 @@ def _cos_matriz(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 class LinkageScoringWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.linkage_stream, cfg)
+        # The score is valid only for this encoder, this classifier file and
+        # this feature layout. Refuse to start if they do not fit (ADR-014).
+        check_encoder_matches_classifier(cfg)
+        check_classifier_file(cfg)
+        self._manifest = build_manifest("linkage", cfg)
         self._encoder: SentenceTransformerEncoder | None = None
         self._clf = None
         # LRU por boletim_id — o worker é um processo só, então um dict basta.
@@ -110,11 +129,16 @@ class LinkageScoringWorker(BaseWorker):
             if self._cuda_available()
             else "cpu"
         )
-        self._encoder = SentenceTransformerEncoder(self.cfg.embedding_model_name, device=device)
+        self._encoder = SentenceTransformerEncoder(
+            self.cfg.embedding_model_name,
+            device=device,
+            revision=revision_for(self.cfg.embedding_model_name, self.cfg),
+        )
         self._encoder.load()
 
         self.logger.info("Loading classifier from %s", self.cfg.linkage_classifier_path)
         self._clf = joblib.load(self.cfg.linkage_classifier_path)
+        check_loaded_classifier(self.cfg, self._clf, FEATURE_NAMES)
         self.logger.info("Classifier loaded, n_features_in_=%s", getattr(self._clf, "n_features_in_", "?"))
 
     @staticmethod
@@ -271,11 +295,22 @@ class LinkageScoringWorker(BaseWorker):
         }
 
     def _feats(self, c: dict) -> list:
-        # Ordem EXATA esperada pelo classificador — não reordenar.
-        return [
-            c["sim_texto"], c["sim_geo"], c["sim_data"], c["sim_identificador"],
-            c["sim_local_exato"], c["sim_descricao"], c["sim_perfil"],
-        ]
+        return [c[name] for name in FEATURE_NAMES]
+
+    def _registry_hyperparameters(self) -> dict:
+        """What goes in gold.model_registry for this classifier.
+
+        Read from the loaded classifier, not typed in: a typed-in value drifted
+        once (C was recorded as 1000.0 while the artifact has 10.0).
+        """
+        params = self._clf.get_params()
+        return {
+            "algoritmo": type(self._clf).__name__,
+            "C": params.get("C"),
+            "class_weight": params.get("class_weight"),
+            "classifier_sha256": self._manifest.identity["classifier_sha256"],
+            "manifest_id": self._manifest.manifest_id,
+        }
 
     async def process(self, data: dict) -> None:
         if self._encoder is None or self._clf is None:
@@ -312,6 +347,8 @@ class LinkageScoringWorker(BaseWorker):
             "sim_descricao": round(componentes["sim_descricao"], 4),
             "sim_perfil": round(componentes["sim_perfil"], 4),
             "motivos": componentes["motivos"],
+            # Which recipe scored this pair: classifier file, encoder, features.
+            "manifest_id": self._manifest.manifest_id,
         }
 
         import json
@@ -322,11 +359,7 @@ class LinkageScoringWorker(BaseWorker):
                     db,
                     MODEL_NAME,
                     MODEL_VERSION,
-                    {
-                        "algoritmo": "LogisticRegression",
-                        "C": 1000.0,
-                        "class_weight": "balanced",
-                    },
+                    self._registry_hyperparameters(),
                 )
 
                 # Same invariant: the backend's partial unique index on

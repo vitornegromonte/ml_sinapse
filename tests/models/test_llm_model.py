@@ -173,3 +173,29 @@ class TestLLMModelModelSpecificSettings:
             LLMModel("fake/model", sampling_params={"max_tokens": 512})
 
         assert "max_tokens" not in caplog.text
+
+
+class TestLLMModelRevisionPin:
+    def test_load_pins_weights_and_tokenizer(self):
+        """Arrange: an LLM model with a pinned revision.
+        Act: load it with vLLM and the tokenizer patched.
+        Assert: vLLM gets the revision for weights and tokenizer, and the
+        Hugging Face tokenizer is loaded at the same commit.
+        """
+        with patch("vllm.LLM") as mock_vllm, patch("transformers.AutoTokenizer") as mock_tok:
+            LLMModel("org/model", revision="d" * 40).load()
+
+        assert mock_vllm.call_args.kwargs["revision"] == "d" * 40
+        assert mock_vllm.call_args.kwargs["tokenizer_revision"] == "d" * 40
+        mock_tok.from_pretrained.assert_called_once_with("org/model", revision="d" * 40)
+
+    def test_load_without_a_revision_is_unchanged(self):
+        """Arrange: an LLM model with no revision.
+        Act: load it with vLLM and the tokenizer patched.
+        Assert: no pin arguments are passed, and the tokenizer call has none.
+        """
+        with patch("vllm.LLM") as mock_vllm, patch("transformers.AutoTokenizer") as mock_tok:
+            LLMModel("org/model").load()
+
+        assert "revision" not in mock_vllm.call_args.kwargs
+        mock_tok.from_pretrained.assert_called_once_with("org/model")

@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from services.gold import get_or_create_model_id
+from services.model_manifest import build_manifest
 from workers.base_worker import BaseWorker
 
 MODEL_NAME = "bo_linkage_cluster"
@@ -57,6 +58,7 @@ CLUSTER_SUPERSEDE_LOCK_KEY = 0x626F5F636C757374
 class ClusterWorker(BaseWorker):
     def __init__(self, cfg=settings):
         super().__init__(cfg.cluster_stream, cfg)
+        self._manifest = build_manifest("cluster", cfg)
 
     async def _carregar_arestas(self, db: AsyncSession) -> list[tuple[int, int]]:
         # shortcut: fetchall de todas as arestas (~60 MB em 490k, ~600 MB em
@@ -122,6 +124,7 @@ class ClusterWorker(BaseWorker):
                     {
                         "algoritmo": "union-find",
                         "score_threshold": self.cfg.cluster_score_threshold,
+                        "manifest_id": self._manifest.manifest_id,
                     },
                 )
 

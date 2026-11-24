@@ -174,3 +174,56 @@ def test_cos_matriz_casa_com_sklearn_inclusive_vetor_zero():
 
     assert np.allclose(obtido, cosine_similarity(a, b), atol=1e-6)
     assert np.all(obtido[1] == 0.0)
+
+
+def test_load_model_pins_the_encoder_revision(tmp_path):
+    """Arrange: a lock that pins the encoder, with the encoder and classifier loading patched.
+    Act: load the linkage worker's model.
+    Assert: the encoder is built with the pinned revision.
+    """
+    import json
+
+    from config import Settings
+
+    lock = tmp_path / "lock.json"
+    lock.write_text(json.dumps({
+        "lock_version": 1,
+        "huggingface": {"neuralmind/bert-base-portuguese-cased": {"revision": "b" * 40}},
+    }))
+    cfg = Settings(_env_file=None, model_lock_path=str(lock))
+    with (
+        patch("workers.linkage_scoring_worker.SentenceTransformerEncoder") as mock_cls,
+        patch("joblib.load", return_value=MagicMock(n_features_in_=7)),
+    ):
+        LinkageScoringWorker(cfg)._load_model()
+
+    assert mock_cls.call_args.kwargs["revision"] == "b" * 40
+
+
+async def test_the_stored_metrics_name_the_recipe_that_scored_the_pair(worker, session):
+    """Arrange: a linkage worker.
+    Act: process a pair.
+    Assert: the stored metrics JSON has the worker's manifest_id.
+    """
+    import json
+
+    await worker.process({"id_bo_origem": 1, "id_bo_destino": 2})
+
+    metricas = json.loads(session.writes[1][1]["metricas"])
+    assert metricas["manifest_id"] == worker._manifest.manifest_id
+
+
+def test_the_registry_hyperparameters_come_from_the_classifier_not_from_code(worker):
+    """Arrange: a classifier whose parameters say C=10 (the real artifact's value).
+    Act: build the registry hyperparameters.
+    Assert: C is 10.0 and not the 1000.0 that used to be typed in, and the
+    classifier hash and manifest id are recorded.
+    """
+    worker._clf.get_params.return_value = {"C": 10.0, "class_weight": "balanced"}
+
+    params = worker._registry_hyperparameters()
+
+    assert params["C"] == 10.0
+    assert params["class_weight"] == "balanced"
+    assert params["manifest_id"] == worker._manifest.manifest_id
+    assert "classifier_sha256" in params

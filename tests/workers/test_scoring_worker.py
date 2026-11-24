@@ -100,3 +100,20 @@ async def test_warns_when_the_result_stream_sits_at_its_cap(
 
     mock_redis.xadd.assert_awaited_once()
     assert "cap" in caplog.text
+
+
+async def test_the_score_message_carries_the_manifest(worker, mock_redis):
+    """Arrange: a scoring worker.
+    Act: process a task.
+    Assert: the message has the manifest_id and model next to the weights version.
+    """
+    await worker.process({
+        "boletim_id": 1,
+        "ato_infracional": "HOMICIDIO",
+        "features": {"victim": True},
+    })
+
+    fields = mock_redis.xadd.call_args.args[1]
+    assert fields["manifest_id"] == worker._manifest.manifest_id
+    assert fields["model"].startswith("bo_maturity_score@")
+    assert fields["weights_version"] == "v1"

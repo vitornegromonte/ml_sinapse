@@ -12,6 +12,7 @@ score can always be traced back to the weight set that produced it.
 
 from config import settings
 from models.tasks import ScoringTask
+from services.model_manifest import build_manifest
 from services.occurrence_scoring import ScoringWeights, load_weights
 from workers.base_worker import BaseWorker
 
@@ -23,6 +24,9 @@ class ScoringWorker(BaseWorker):
         # a deployment error and should fail the container, not every message.
         self._weights: ScoringWeights = load_weights(cfg.scoring_weights_path)
         self._result_stream = f"{cfg.scoring_stream}:results"
+        # The weights version already travels with each score; the manifest id
+        # adds the weights hash (ADR-014).
+        self._manifest = build_manifest("scoring", cfg)
 
     async def process(self, data: dict) -> None:
         task = ScoringTask(**data)
@@ -35,6 +39,7 @@ class ScoringWorker(BaseWorker):
                 "ato_infracional": task.ato_infracional,
                 "score": f"{score:.6f}",
                 "weights_version": self._weights.version,
+                **self._manifest.lineage(),
                 "pipeline_run_id": task.pipeline_run_id or "",
             },
             maxlen=self.cfg.scoring_result_stream_maxlen,

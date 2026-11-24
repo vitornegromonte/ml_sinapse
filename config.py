@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     ml_database_url: str = "postgresql+asyncpg://sinapse_ml:change_me_ml_worker@db:5432/sinapse_db"
 
     model_base_path: str = "/model-cache"
+    # Pins (Hugging Face commits, artifact hashes) for every model the workers
+    # load. See services/model_manifest.py and ADR-014.
+    model_lock_path: str = "artifacts/models.lock.json"
+    # Start even when the models do not fit each other (for example a new
+    # encoder with the old linkage classifier). Off by default: the mismatch
+    # makes every linkage score wrong without an error. See services/model_compat.py.
+    allow_incompatible_models: bool = False
 
     # OCR
     # The OCR worker (workers/ocr_worker.py). Grouped by purpose. The stream

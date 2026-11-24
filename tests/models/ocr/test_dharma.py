@@ -325,3 +325,28 @@ class TestDharmaJsonOutput:
             model.predict(Image.new("RGB", (10, 10)), max_tokens=64)
 
         assert "conteudo-sensivel-do-bo" not in caplog.text
+
+
+class TestDharmaRevisionPin:
+    def test_load_pins_the_weights_and_the_tokenizer(self):
+        """Arrange: a Dharma model built with a pinned revision.
+        Act: load it with vLLM patched.
+        Assert: vLLM gets the revision for the weights and for the tokenizer,
+        so neither comes from the default branch.
+        """
+        with patch("vllm.LLM") as mock_vllm:
+            DharmaOcrModel("Dharma-AI/Dharma-OCR-LITE", "/cache", 0, revision="a" * 40).load()
+
+        assert mock_vllm.call_args.kwargs["revision"] == "a" * 40
+        assert mock_vllm.call_args.kwargs["tokenizer_revision"] == "a" * 40
+
+    def test_load_without_a_revision_passes_no_pin(self):
+        """Arrange: a Dharma model built with no revision.
+        Act: load it with vLLM patched.
+        Assert: neither pin argument is passed.
+        """
+        with patch("vllm.LLM") as mock_vllm:
+            DharmaOcrModel("Dharma-AI/Dharma-OCR-LITE", "/cache", 0).load()
+
+        assert "revision" not in mock_vllm.call_args.kwargs
+        assert "tokenizer_revision" not in mock_vllm.call_args.kwargs

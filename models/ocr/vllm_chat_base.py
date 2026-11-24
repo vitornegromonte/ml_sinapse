@@ -60,11 +60,13 @@ class VllmChatOcrModel(AbstractOcrModel):
         dtype: str = "auto",
         gpu_memory_utilization: float = 0.9,
         max_model_len: int | None = None,
+        revision: str | None = None,
     ):
         """
         `gpu_memory_utilization` has vLLM's usual default here. The 15% cap
         from `Settings` applies only when the caller passes the setting, as
-        `OcrWorker` does.
+        `OcrWorker` does. `revision` is the pinned Hugging Face commit (see
+        artifacts/models.lock.json); None fetches the default branch.
         """
         self._model_name = model_name
         self._cache_dir = cache_dir
@@ -72,6 +74,7 @@ class VllmChatOcrModel(AbstractOcrModel):
         self._dtype = dtype
         self._gpu_memory_utilization = gpu_memory_utilization
         self._max_model_len = max_model_len
+        self._revision = revision
         self._llm: Any = None
 
     # public
@@ -89,6 +92,10 @@ class VllmChatOcrModel(AbstractOcrModel):
         )
         if self._max_model_len is not None:
             kwargs["max_model_len"] = self._max_model_len
+        if self._revision:
+            # The tokenizer is pinned too, or it would come from the default branch.
+            kwargs["revision"] = self._revision
+            kwargs["tokenizer_revision"] = self._revision
 
         self._llm = LLM(**kwargs)
 

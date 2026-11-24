@@ -33,16 +33,18 @@ class SentenceTransformerEncoder:
     """Wraps sentence-transformers — see module docstring for why this
     specific library/pooling combination is load-bearing, not incidental."""
 
-    def __init__(self, model_name: str, device: str = "cpu"):
+    def __init__(self, model_name: str, device: str = "cpu", revision: str | None = None):
         self.model_name = model_name
         self.device = device
+        self.revision = revision  # pinned commit (artifacts/models.lock.json) or None
         self._model = None
 
     def load(self) -> None:
         from sentence_transformers import SentenceTransformer
 
         logger.info("Loading SentenceTransformer(%s) on %s", self.model_name, self.device)
-        self._model = SentenceTransformer(self.model_name, device=self.device)
+        kwargs = {"revision": self.revision} if self.revision else {}
+        self._model = SentenceTransformer(self.model_name, device=self.device, **kwargs)
         logger.info(
             "Encoder loaded, embedding dim=%d",
             self._model.get_embedding_dimension(),

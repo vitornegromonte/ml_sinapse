@@ -31,6 +31,7 @@ from pydantic import ValidationError
 from config import Settings, settings
 from models.ocr import AbstractOcrModel, OcrTask, create_model
 from services.image_loader import ImageLoader
+from services.model_manifest import build_manifest, publish_manifest, revision_for
 from services.ocr_checkpoint import OcrCheckpoint, checkpoint_key
 from services.pdf_extractor import PdfExtractor
 from services.result_publisher import ResultPublisher
@@ -78,6 +79,11 @@ class OcrWorker(BaseWorker):
         )
         self._skew_corrector = SkewCorrector()
         self._pdf_extractor = PdfExtractor(dpi=cfg.ocr_render_dpi)
+
+        # What exactly this worker runs (model, pin, prompts, settings). Its id
+        # goes on every output; see services/model_manifest.py and ADR-014.
+        self._manifest = build_manifest("ocr", cfg)
+        self._manifest_published = False
 
         # Created on first use.
         self._model: AbstractOcrModel | None = None
@@ -387,6 +393,7 @@ class OcrWorker(BaseWorker):
             dtype=self.cfg.ocr_dtype,
             gpu_memory_utilization=self.cfg.ocr_gpu_memory_utilization,
             max_model_len=self.cfg.ocr_max_model_len,
+            revision=revision_for(self.cfg.ocr_model_name, self.cfg),
         )
         self._model.load()
         self.logger.info(
@@ -414,16 +421,21 @@ class OcrWorker(BaseWorker):
                 redis=self.redis,
                 stream=self.stream,
                 maxlen=self.cfg.ocr_result_stream_maxlen,
+                lineage=self._manifest.lineage(),
             )
 
     # output
 
     def _save_to_bronze(self, task: OcrTask, text: str) -> None:
         self._ensure_storage()
+        if not self._manifest_published:
+            publish_manifest(self._storage, self._manifest)
+            self._manifest_published = True
         self._storage.save(
             prefix="ocr",
             document_id=task.document_id,
             data=text.encode("utf-8"),
+            metadata=self._manifest.lineage(),
         )
 
     async def _publish_result(self, task: OcrTask, text: str) -> None:

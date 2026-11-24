@@ -74,3 +74,34 @@ class TestRegistry:
         model = create_model("irrelevant", "/cache", 2, model_uri="models:/ocr-model/1")
         assert isinstance(model, MlflowOcrModel)
         assert model._gpu_device == 2
+
+
+class TestRegistryRevision:
+    def test_create_model_hands_the_revision_to_the_model(self):
+        """Arrange: a Dharma model name and a pinned revision.
+        Act: create the model.
+        Assert: the model carries the revision.
+        """
+        model = create_model("Dharma-AI/Dharma-OCR-LITE", "/cache", 0, revision="b" * 40)
+
+        assert model._revision == "b" * 40
+
+    def test_mlflow_model_ignores_the_revision(self):
+        """Arrange: a model URI and a revision.
+        Act: create the model.
+        Assert: an MlflowOcrModel, since the URI already names the version.
+        """
+        model = create_model("x", "/cache", 0, model_uri="models:/ocr/1", revision="c" * 40)
+
+        assert isinstance(model, MlflowOcrModel)
+
+    def test_model_class_for_returns_the_class_without_building_it(self):
+        """Arrange: known and unknown model names.
+        Act: ask for the class of each.
+        Assert: the class for a known name, None for an unknown one.
+        """
+        from models.ocr.registry import model_class_for
+
+        assert model_class_for("Dharma-AI/Dharma-OCR-LITE") is DharmaOcrModel
+        assert model_class_for("zai-org/GLM-OCR") is GlmOcrModel
+        assert model_class_for("org/unknown") is None
