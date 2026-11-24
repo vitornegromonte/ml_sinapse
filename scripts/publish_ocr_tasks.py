@@ -16,7 +16,6 @@ Examples:
 """
 
 import argparse
-import json
 from pathlib import Path
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}

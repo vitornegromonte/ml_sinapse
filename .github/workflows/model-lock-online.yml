@@ -1,0 +1,27 @@
+name: model lock (online)
+
+# Asks Hugging Face whether every pinned commit still exists. It needs the
+# network, so it is not part of the push checks: a Hub outage must not block a
+# pull request. A failure here means a pinned model was deleted or force-pushed.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The checker imports only these four packages (checked in a clean venv).
+      - name: Install the checker's dependencies
+        run: pip install pydantic-settings numpy "sqlalchemy[asyncio]" "redis[hiredis]"
+
+      - name: Verify the pinned commits on Hugging Face
+        run: python scripts/check_model_lock.py --online

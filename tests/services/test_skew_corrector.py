@@ -31,9 +31,7 @@ class TestSkewCorrector:
         Assert: no error and the original size is kept.
         """
         img = Image.new("RGB", (100, 100), color="white")
-        np_img = np.array(img)
-        # Cria imagem que resulta em array de tamanho zero após conversão
-        # Simplesmente retorna a original como o código faz para size==0
+        # The code returns the original image when the array has size 0.
         corrector = SkewCorrector()
         result = corrector.correct(img)
         assert result.size == (100, 100)

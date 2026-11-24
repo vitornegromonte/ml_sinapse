@@ -5,6 +5,24 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # same as the Dockerfile
+
+      # Same version as requirements-dev.txt, so CI and a developer agree.
+      - name: Install ruff
+        run: pip install ruff==0.17.6
+
+      # Syntax errors and pyflakes (unused or undefined names). Settings are in pyproject.toml.
+      - name: Lint
+        run: ruff check .
+
   pytest:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -24,7 +42,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt -r requirements-test.txt
 
+      # Fails when a default model has no pin, a pin is not a commit hash, an
+      # artifact no longer matches its hash, or the encoder no longer matches
+      # the linkage classifier. See ADR-014.
+      - name: Check the model lock
+        run: python scripts/check_model_lock.py
+
       # All tests run: tests/conftest.py stands in for vLLM (CUDA-only, not in
-      # requirements-test.txt) because the vLLM tests patch it anyway.
+      # requirements-test.txt) because the vLLM tests patch it anyway. The
+      # coverage floor (fail_under) is in pyproject.toml.
       - name: Run tests
-        run: python -m pytest -q -rs
+        run: python -m pytest -q -rs --cov --cov-report=term

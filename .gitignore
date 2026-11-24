@@ -26,3 +26,10 @@ graphify-out/
 /architecture.md
 TASK.md
 ML_review.md
+
+# Test tooling output
+.coverage
+htmlcov/
+mlflow.db
+mlartifacts/
+.ruff_cache/

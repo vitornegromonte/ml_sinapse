@@ -25,7 +25,6 @@ from models.ocr import create_model
 from models.llm_model import LLMModel
 from services.pdf_extractor import PdfExtractor
 from services.skew_corrector import SkewCorrector
-from services.image_loader import ImageLoader
 
 
 def _vram(gpu: int) -> tuple[int, int]:
