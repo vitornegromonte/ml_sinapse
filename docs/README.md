@@ -18,6 +18,7 @@ Para a visão geral do sistema, veja [architecture.md](./.claude/architecture.md
 | [ADR-011](./adr-011-permanent-errors-and-model-timeout.md) | Falhas permanentes e timeout de modelo | ✅ Aceito |
 | [ADR-012](./adr-012-ocr-throughput-and-resume.md) | Velocidade do OCR e retomada após falha | ✅ Aceito |
 | [ADR-013](./adr-013-llm-s5-nano.md) | LLM de resumo: maritaca-ai/S5-nano | ✅ Aceito |
+| [ADR-014](./adr-014-model-identity-and-lineage.md) | Identidade de modelo, linhagem das saídas e portões de CI | ✅ Aceito |
 
 Os ADRs mantêm o corpo original; a seção **Atualização** no fim de cada um
 registra o que mudou depois.

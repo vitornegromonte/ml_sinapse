@@ -45,7 +45,7 @@ These rules apply to every change. The guides give the detail.
 2. **Backend boundary.** Do not add HTTP calls or Python imports between workers and the backend, unless an ADR allows it. Do not move backend responsibilities into this repository.
 3. **Redis Streams.** Stream names are in `config.py`. When you change a name, update both repositories. Do not rename payload fields silently.
 4. **Workers.** Build on `workers/base_worker.py`. Do not acknowledge a message before processing succeeds. Make processing safe to retry.
-5. **Models.** Keep models behind wrappers. Do not load a model at import time. Keep CPU-only development possible.
+5. **Models.** Keep models behind wrappers. Do not load a model at import time. Keep CPU-only development possible. Pin every model in `artifacts/models.lock.json`; change a pin only with `scripts/update_model_lock.py`.
 6. **Tests.** Add or update tests for every behavior change. Follow Arrange, Act, Assert. Never weaken a test to make a change pass.
 7. **Docs.** Update the matching guide when you change worker behavior, stream contracts, environment variables, model integration, or deployment. Document only what the code does.
 8. **ADRs.** Read the relevant ADR before you change an established pattern. Record a significant decision in a new `docs/adr-*.md`. Do not contradict an ADR silently.

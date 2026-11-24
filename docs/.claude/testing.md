@@ -96,10 +96,11 @@ tests/
 │   ├── test_tasks.py
 │   └── ocr/                 models/ocr/: test_base, test_dharma, test_glm,
 │                            test_mlflow_model, test_registry, test_task
-├── scripts/                 scripts/: test_profile_models.py
+├── scripts/                 scripts/: test_profile_models, test_model_lock_tools,
+│                            test_log_manifests_to_mlflow
 ├── services/                services/: one file per module
 └── workers/                 workers/
-    ├── test_base_worker.py, test_run_worker.py
+    ├── test_base_worker.py, test_run_worker.py, test_startup_compat.py
     ├── test_{cluster,embedding,linkage_scoring,llm,ner,scoring}_worker.py
     └── ocr/                 a folder, because the OCR worker has many behaviors
         ├── conftest.py      fixtures: mock_model, worker

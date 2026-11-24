@@ -52,6 +52,10 @@ baixado na primeira execução para `/model-cache/huggingface`),
 `LLM_GPU_MEMORY_UTILIZATION` (0,25), `LLM_SAMPLING_PARAMS` e
 `LLM_CHAT_TEMPLATE_KWARGS` (JSON; o padrão desliga o modo de raciocínio) e
 `LLM_ENGINE_KWARGS` (JSON; veja o ADR-013).
+Modelos: cada modelo é fixado em `artifacts/models.lock.json` (ADR-014); atualize
+com `python scripts/update_model_lock.py` (simulação) e `--write`.
+`ALLOW_INCOMPATIBLE_MODELS=true` deixa o worker de embedding ou de linkage
+iniciar com um encoder diferente do da calibração do classificador.
 OCR tuning: `OCR_PAGE_BATCH_SIZE` (padrão 4), `OCR_RENDER_DPI` (200),
 `OCR_PARTIAL_TTL_SECONDS` (86400; 0 desliga o checkpoint de páginas),
 `OCR_PREDICT_TIMEOUT_SECONDS` (600). O `ocr-worker` guarda o cache de compilação

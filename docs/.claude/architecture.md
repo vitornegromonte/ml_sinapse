@@ -111,6 +111,38 @@ Clustering supersedes the whole previous batch.
 
 ---
 
+## Model identity and lineage
+
+Every model the workers load is pinned in `artifacts/models.lock.json` (a
+Hugging Face commit, or an artifact SHA-256). Each stage builds a **manifest**
+from its settings (model, pin, prompts, sampling, thresholds). The manifest has
+a short `manifest_id`. A change to anything that changes the output changes the
+id (ADR-014).
+
+| Output | Where the lineage is |
+|---|---|
+| `ocr:tasks:results`, `llm:tasks`, `scoring:tasks:results` | fields `manifest_id` and `model` on each message |
+| `ml-results/ocr/<id>`, `ml-results/llm/<id>` | the same two fields as object metadata (`x-amz-meta-*`) |
+| `ml-results/manifests/<manifest_id>` | the full manifest JSON, written once per worker process |
+| `gold.bo_relacionado.metricas` | key `manifest_id` |
+| `gold.model_registry` | name and version, with the hyperparameters read from the loaded model |
+
+Fields are only added, never renamed. The backend consumer must ignore fields
+it does not know.
+
+Startup checks (`services/model_compat.py`): the embedding and linkage workers
+refuse to start with an encoder other than the one the classifier was
+calibrated with. The linkage worker also refuses a classifier file whose hash
+differs from the lock, and a classifier that expects another number of
+features. `ALLOW_INCOMPATIBLE_MODELS=true` turns the refusal into a warning.
+
+To upgrade a model: run `scripts/update_model_lock.py` (dry run), then
+`--write`, review the diff, and test. CI runs `scripts/check_model_lock.py` on
+every push. `scripts/log_manifests_to_mlflow.py` records each manifest in
+MLflow.
+
+---
+
 ## Flows
 
 ### 1. PDF ingest — OCR → LLM summary
@@ -282,6 +314,12 @@ retry → DLQ path.
 - **`import_bo_ner.py` breaks the no-shared-code rule.** It adds the
   `sinapse` backend to `sys.path`, imports its models, and writes `silver`
   through the backend role. Treat it as a bootstrap exception, not a pattern.
+- **Most of `requirements.txt` is not pinned.** Only torch, torchvision,
+  transformers, vllm and scikit-learn have versions. A rebuild can change the
+  rest, and `pip-audit` cannot audit the file.
+- **Old `gold.model_registry` rows keep their old values.** The linkage row
+  already written records `C=1000.0`; the artifact has `C=10.0`. A backend
+  migration must fix it.
 - **Geo is always 0.** Nothing populates `silver.boletim.geom`, so `sim_geo`
   is 0.
 
