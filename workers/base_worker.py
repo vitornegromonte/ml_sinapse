@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from config import settings
 from services.database import create_db_engine, create_session_factory
+from services.logging_setup import configure_logging, context_from_payload, message_context
+from services.telemetry import TelemetryServer, WorkerTelemetry
 
 
 class PermanentTaskError(ValueError):
@@ -44,6 +46,12 @@ class BaseWorker(ABC):
         self.db_engine: AsyncEngine | None = None
         self.db_session_factory: async_sessionmaker[AsyncSession] | None = None
         self._running = True
+
+        # Metrics and health (services/telemetry.py). None unless METRICS_PORT
+        # is set, and then every hook below is a no-op: processing is unchanged.
+        self.telemetry: WorkerTelemetry | None = None
+        self._telemetry_server: TelemetryServer | None = None
+        self._telemetry_task: asyncio.Task | None = None
 
         self.logger = logging.getLogger(
             f"{self.__class__.__name__}[{self.stream}]"
@@ -97,6 +105,7 @@ class BaseWorker(ABC):
         processed twice (see _reclaim_stale). One task renews the whole batch."""
         while True:
             await asyncio.sleep(self.cfg.lease_heartbeat_seconds)
+            self._tick()  # a long model call keeps the worker alive for /healthz
             for lease_key in lease_keys:
                 try:
                     await self.redis.set(
@@ -129,6 +138,23 @@ class BaseWorker(ABC):
         self.logger.warning(
             "Moved %s to DLQ %s: %s", message_id, dlq_stream, error
         )
+
+    # ------------------------------------------------------- observability
+    # Every hook is a no-op when telemetry is off, and never raises (the
+    # telemetry methods catch their own errors).
+
+    def _tick(self) -> None:
+        if self.telemetry is not None:
+            self.telemetry.tick()
+
+    def _on_model_loaded(self) -> None:
+        """Workers call this when their model finishes loading."""
+        if self.telemetry is not None:
+            self.telemetry.model_loaded(True)
+
+    def _on_model_unloaded(self) -> None:
+        if self.telemetry is not None:
+            self.telemetry.model_loaded(False)
 
     @abstractmethod
     async def process(self, data: dict) -> None:
@@ -184,6 +210,8 @@ class BaseWorker(ABC):
                         continue
                     reclaimable.append((message_id, raw))
                 if reclaimable:
+                    if self.telemetry is not None:
+                        self.telemetry.reclaimed(len(reclaimable))
                     await self._process_messages(reclaimable)
                 if cursor == "0-0":
                     break
@@ -202,12 +230,18 @@ class BaseWorker(ABC):
             )
             await self._dead_letter(message_id, data, str(exc))
             await self._ack(message_id)
+            if self.telemetry is not None:
+                self.telemetry.message_settled("permanent")
             return
         retries = await self._increment_retries(message_id)
         if retries >= self.cfg.max_retries:
             await self._dead_letter(message_id, data, str(exc))
             await self._ack(message_id)
+            if self.telemetry is not None:
+                self.telemetry.message_settled("dead_letter")
         else:
+            if self.telemetry is not None:
+                self.telemetry.message_settled("retry")
             self.logger.info(
                 "Leaving %s pending for retry %d/%d — will be reclaimed by "
                 "XAUTOCLAIM once idle %dms (not acking it now)",
@@ -223,6 +257,22 @@ class BaseWorker(ABC):
     async def _process_messages(
         self, messages: list[tuple[str, dict]]
     ) -> None:
+        """Process one batch with the messages' ids in every log line it writes.
+
+        A single message adds its own ids (message id, pipeline run id,
+        document id). A batch of several adds only the list of message ids,
+        because the worker's log lines are not per item.
+        """
+        if len(messages) == 1:
+            context = context_from_payload(*messages[0])
+        else:
+            context = {"message_ids": [message_id for message_id, _ in messages]}
+        with message_context(**context):
+            await self._settle_batch(messages)
+
+    async def _settle_batch(
+        self, messages: list[tuple[str, dict]]
+    ) -> None:
         """Run one batch under a single heartbeat, then settle each message.
 
         The lease covers every message in the batch (one slow GPU call must
@@ -236,6 +286,7 @@ class BaseWorker(ABC):
                 lease_key, self.consumer_id, ex=self.cfg.lease_ttl_seconds
             )
         heartbeat = asyncio.create_task(self._heartbeat(lease_keys))
+        started = time.monotonic()
         try:
             try:
                 results = await self.process_batch(
@@ -251,9 +302,14 @@ class BaseWorker(ABC):
                 # individual items: every one takes the normal retry path.
                 results = [exc] * len(messages)
 
+            if self.telemetry is not None:
+                self.telemetry.batch_processed(len(messages), time.monotonic() - started)
+
             for (message_id, data), result in zip(messages, results):
                 if result is None:
                     await self._ack(message_id)
+                    if self.telemetry is not None:
+                        self.telemetry.message_settled("success")
                 else:
                     await self._fail(message_id, data, result)
         finally:
@@ -285,8 +341,10 @@ class BaseWorker(ABC):
             self.group,
             self.consumer_id,
         )
+        self._start_telemetry()
 
         while self._running:
+            self._tick()
             try:
                 # Pick up messages left pending by a not-yet-exhausted retry
                 # or an abandoned consumer before reading new ones.
@@ -299,6 +357,8 @@ class BaseWorker(ABC):
                     count=self._batch_count(),
                     block=self.cfg.poll_timeout_ms,
                 )
+                if self.telemetry is not None:
+                    self.telemetry.redis_ok()
                 if results:
                     for _, messages in results:
                         await self._process_messages(messages)
@@ -308,20 +368,71 @@ class BaseWorker(ABC):
                 self.logger.error("Redis connection error: %s", exc)
                 await asyncio.sleep(1)
 
+        await self._stop_telemetry()
         await self.db_engine.dispose()
 
         await self.redis.close()
         self.logger.info("Worker stopped")
+
+    def _start_telemetry(self) -> None:
+        """Start the metrics server and the queue-gauge task, if METRICS_PORT is set.
+
+        A port that cannot be bound is logged and skipped: monitoring must not
+        stop a worker from working.
+        """
+        if self.cfg.metrics_port <= 0:
+            return
+        stale_after = self.cfg.poll_timeout_ms / 1000 + self.cfg.health_grace_seconds
+        self.telemetry = WorkerTelemetry(
+            self.stream, getattr(self, "_manifest", None), stale_after_seconds=stale_after
+        )
+        try:
+            server = TelemetryServer(self.telemetry, self.cfg.metrics_port)
+            port = server.start()
+            self._telemetry_server = server
+            self.logger.info("Metrics and health on port %d (/metrics, /healthz, /readyz)", port)
+        except OSError as exc:
+            self.logger.error("Could not start the metrics server on port %s: %s", self.cfg.metrics_port, exc)
+        self._telemetry_task = asyncio.create_task(self._telemetry_loop())
+
+    async def _telemetry_loop(self) -> None:
+        """Refresh the queue gauges on a fixed period, independent of the main loop."""
+        while True:
+            await self._refresh_queue_gauges()
+            await asyncio.sleep(self.cfg.metrics_refresh_seconds)
+
+    async def _refresh_queue_gauges(self) -> None:
+        """One refresh of the queue length, pending count and dead-letter length."""
+        dead_letter_stream = f"{self.stream}{self.cfg.dead_letter_suffix}"
+        try:
+            length = await self.redis.xlen(self.stream)
+            pending = (await self.redis.xpending(self.stream, self.group))["pending"]
+            dead_letters = await self.redis.xlen(dead_letter_stream)
+            self.telemetry.queue_snapshot(length, pending, dead_letters)
+            self.telemetry.redis_ok()
+        except Exception as exc:  # a Redis fault shows up as readiness going false
+            self.logger.debug("Queue gauges not refreshed: %s", exc)
+
+    async def _stop_telemetry(self) -> None:
+        if self._telemetry_task is not None:
+            self._telemetry_task.cancel()
+            try:
+                await self._telemetry_task
+            except asyncio.CancelledError:
+                pass
+        if self._telemetry_server is not None:
+            self._telemetry_server.stop()
 
     def _handle_signal(self) -> None:
         self.logger.info("Shutdown signal received")
         self._running = False
 
     def run(self) -> None:
-        logging.basicConfig(
-            level=getattr(logging, self.cfg.log_level),
-            format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-        )
+        fixed = {"stream": self.stream}
+        manifest = getattr(self, "_manifest", None)
+        if manifest is not None:
+            fixed.update(manifest.lineage())
+        configure_logging(self.cfg.log_level, self.cfg.log_format, fixed)
         self.logger.info(
             "Starting worker process (pid=%s stream=%s)",
             os.getpid(),

@@ -59,6 +59,7 @@ class EmbeddingWorker(BaseWorker):
             revision=revision_for(self.cfg.embedding_model_name, self.cfg),
         )
         self._encoder.load()
+        self._on_model_loaded()
 
     @staticmethod
     def _cuda_available() -> bool:
@@ -203,4 +204,5 @@ class EmbeddingWorker(BaseWorker):
         finally:
             if self._encoder is not None:
                 self._encoder.unload()
+                self._on_model_unloaded()
             self.logger.info("Embedding worker finished")

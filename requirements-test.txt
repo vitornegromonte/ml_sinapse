@@ -21,6 +21,7 @@ torchvision==0.26.0
 transformers==5.14.1
 
 redis[hiredis]
+prometheus-client==0.26.0
 pydantic-settings
 sqlalchemy[asyncio]
 minio

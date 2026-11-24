@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -253,6 +253,20 @@ class Settings(BaseSettings):
     lease_ttl_seconds: int = 30
 
     log_level: str = "INFO"
+    # "text" is the format the workers always used. "json" writes one JSON object
+    # per line with the message id, pipeline run id, document id and the model
+    # recipe. See services/logging_setup.py and ADR-015.
+    log_format: Literal["text", "json"] = "text"
+
+    # Worker metrics and health (services/telemetry.py, ADR-015). 0 turns the
+    # HTTP server off. Compose sets 9100 inside each container and does not
+    # publish it: let the monitoring system reach the container network.
+    metrics_port: int = Field(default=0, ge=0, le=65535)
+    # How often the queue gauges (length, pending, dead letters) are refreshed.
+    metrics_refresh_seconds: int = Field(default=15, ge=1)
+    # Extra seconds beyond the idle poll timeout before a silent worker counts as
+    # stalled. The limit is poll_timeout_ms / 1000 + this.
+    health_grace_seconds: int = Field(default=30, ge=0)
 
     minio_endpoint: str = "http://minio:9000"
     minio_access_key: str = "minioadmin"

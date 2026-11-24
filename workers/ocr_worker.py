@@ -396,6 +396,7 @@ class OcrWorker(BaseWorker):
             revision=revision_for(self.cfg.ocr_model_name, self.cfg),
         )
         self._model.load()
+        self._on_model_loaded()
         self.logger.info(
             "Model loaded on %s: %s", self._model.device, type(self._model).__name__
         )
@@ -405,6 +406,7 @@ class OcrWorker(BaseWorker):
             self.logger.info("Unloading model")
             self._model.unload()
             self._model = None
+            self._on_model_unloaded()
 
     def _ensure_storage(self) -> None:
         if self._storage is None:
@@ -422,6 +424,7 @@ class OcrWorker(BaseWorker):
                 stream=self.stream,
                 maxlen=self.cfg.ocr_result_stream_maxlen,
                 lineage=self._manifest.lineage(),
+                on_length=self.telemetry.result_stream_length if self.telemetry else None,
             )
 
     # output

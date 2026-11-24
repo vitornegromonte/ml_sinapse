@@ -102,3 +102,45 @@ class TestResultPublisherLineage:
         await pub.publish({"document_id": "d1"}, "um")
 
         assert set(mock_redis.xadd.call_args.args[1]) == {"document_id", "text", "text_length"}
+
+
+class TestResultPublisherOnLength:
+    async def test_the_callback_gets_the_stream_and_its_length(self, mock_redis):
+        """Arrange: a publisher with an on_length callback and a stream of 12 entries.
+        Act: publish a result.
+        Assert: the callback was called once with the results stream name and 12.
+        """
+        from unittest.mock import MagicMock
+
+        mock_redis.xlen.return_value = 12
+        callback = MagicMock()
+        pub = ResultPublisher(mock_redis, "ocr:tasks", maxlen=100, on_length=callback)
+
+        await pub.publish({"document_id": "d1"}, "texto")
+
+        callback.assert_called_once_with("ocr:tasks:results", 12)
+
+    async def test_a_failing_callback_does_not_fail_the_publish(self, mock_redis):
+        """Arrange: a callback that raises.
+        Act: publish a result.
+        Assert: the message was still written, and no exception escaped.
+        """
+        def boom(stream, length):
+            raise RuntimeError("metrics broken")
+
+        pub = ResultPublisher(mock_redis, "ocr:tasks", maxlen=100, on_length=boom)
+
+        await pub.publish({"document_id": "d1"}, "texto")
+
+        mock_redis.xadd.assert_awaited_once()
+
+    async def test_no_callback_and_no_maxlen_means_no_length_call(self, mock_redis):
+        """Arrange: a publisher with no maxlen.
+        Act: publish.
+        Assert: XLEN is not called, so nothing is added to the hot path.
+        """
+        pub = ResultPublisher(mock_redis, "ocr:tasks", maxlen=0)
+
+        await pub.publish({"document_id": "d1"}, "texto")
+
+        mock_redis.xlen.assert_not_awaited()

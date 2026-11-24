@@ -214,3 +214,51 @@ class TestLlmSettings:
         monkeypatch.setenv("LLM_MODEL_PATH", "org/other-model")
 
         assert Settings(_env_file=None).llm_model_path == "org/other-model"
+
+
+class TestObservabilitySettings:
+    def test_defaults_keep_everything_off_and_the_log_format_unchanged(self):
+        """Arrange: default settings.
+        Act: read the observability settings.
+        Assert: no metrics port, the text log format, and the documented periods.
+        """
+        settings = Settings(_env_file=None)
+
+        assert settings.metrics_port == 0
+        assert settings.log_format == "text"
+        assert settings.metrics_refresh_seconds == 15
+        assert settings.health_grace_seconds == 30
+
+    def test_json_is_a_valid_log_format(self):
+        """Arrange: log_format json.
+        Act: build the settings.
+        Assert: accepted.
+        """
+        assert Settings(_env_file=None, log_format="json").log_format == "json"
+
+    @pytest.mark.parametrize("field, value", [
+        ("log_format", "xml"),
+        ("metrics_port", -1),
+        ("metrics_port", 70000),
+        ("metrics_refresh_seconds", 0),
+        ("health_grace_seconds", -1),
+    ])
+    def test_invalid_values_are_rejected(self, field, value):
+        """Arrange: a value outside the allowed range or set.
+        Act: build the settings.
+        Assert: validation fails.
+        """
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, **{field: value})
+
+    def test_the_port_can_be_set_from_the_environment(self, monkeypatch):
+        """Arrange: METRICS_PORT and LOG_FORMAT in the environment (as compose sets them).
+        Act: build the settings.
+        Assert: both are read.
+        """
+        monkeypatch.setenv("METRICS_PORT", "9100")
+        monkeypatch.setenv("LOG_FORMAT", "json")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.metrics_port == 9100 and settings.log_format == "json"

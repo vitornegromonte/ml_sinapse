@@ -49,6 +49,8 @@ class ScoringWorker(BaseWorker):
         # oldest score silently once the backend consumer falls behind.
         if self.cfg.scoring_result_stream_maxlen:
             length = await self.redis.xlen(self._result_stream)
+            if self.telemetry is not None:
+                self.telemetry.result_stream_length(self._result_stream, length)
             if length >= self.cfg.scoring_result_stream_maxlen:
                 self.logger.warning(
                     "Results stream %s is at its %d-entry cap — the consumer is "

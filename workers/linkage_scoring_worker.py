@@ -139,6 +139,7 @@ class LinkageScoringWorker(BaseWorker):
         self.logger.info("Loading classifier from %s", self.cfg.linkage_classifier_path)
         self._clf = joblib.load(self.cfg.linkage_classifier_path)
         check_loaded_classifier(self.cfg, self._clf, FEATURE_NAMES)
+        self._on_model_loaded()
         self.logger.info("Classifier loaded, n_features_in_=%s", getattr(self._clf, "n_features_in_", "?"))
 
     @staticmethod
@@ -406,4 +407,5 @@ class LinkageScoringWorker(BaseWorker):
         finally:
             if self._encoder is not None:
                 self._encoder.unload()
+                self._on_model_unloaded()
             self.logger.info("Linkage scoring worker finished")

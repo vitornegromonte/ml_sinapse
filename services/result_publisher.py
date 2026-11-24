@@ -19,11 +19,16 @@ class ResultPublisher:
         stream: str,
         maxlen: int = 1000,
         lineage: dict[str, str] | None = None,
+        on_length=None,
     ):
+        """`on_length(stream, length)` is called after each publish with the
+        stream's length, for the metrics (ml_result_stream_length). It must not
+        raise; a failure in it is ignored."""
         self._redis = redis
         self._stream = stream
         self._maxlen = maxlen
         self._lineage = dict(lineage or {})
+        self._on_length = on_length
 
     async def publish(self, data: dict, text: str) -> None:
         result = {
@@ -44,6 +49,11 @@ class ResultPublisher:
         # warning an operator gets that the backend consumer is behind.
         if self._maxlen:
             length = await self._redis.xlen(stream)
+            if self._on_length is not None:
+                try:
+                    self._on_length(stream, length)
+                except Exception:
+                    logger.debug("on_length callback failed", exc_info=True)
             if length >= self._maxlen:
                 logger.warning(
                     "Results stream %s is at its %d-entry cap — the consumer is "

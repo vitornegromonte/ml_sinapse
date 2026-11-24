@@ -40,6 +40,7 @@ class LlmWorker(BaseWorker):
             revision=revision_for(self.cfg.llm_model_path, self.cfg),
         )
         self._llm.load()
+        self._on_model_loaded()
         self.logger.info("LLM model loaded (vLLM, %s)", self.cfg.llm_model_path)
 
     def _unload_model(self) -> None:
@@ -47,6 +48,7 @@ class LlmWorker(BaseWorker):
             self.logger.info("Unloading LLM model")
             self._llm.unload()
             self._llm = None
+            self._on_model_unloaded()
 
     def _ensure_storage(self) -> None:
         if self._storage is None:
@@ -64,6 +66,7 @@ class LlmWorker(BaseWorker):
                 stream=self.cfg.llm_stream,
                 maxlen=self.cfg.llm_result_stream_maxlen,
                 lineage=self._manifest.lineage(),
+                on_length=self.telemetry.result_stream_length if self.telemetry else None,
             )
 
     def _build_prompt(self, text: str) -> str:

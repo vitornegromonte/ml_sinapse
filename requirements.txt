@@ -1,4 +1,6 @@
 redis[hiredis]
+# Worker metrics (services/telemetry.py). Pinned: it has no dependencies.
+prometheus-client==0.26.0
 pydantic-settings
 # torch/torchvision/transformers/vllm are pinned to versions with matching
 # prebuilt wheels for each other — left unpinned, pip's resolver walks vllm's

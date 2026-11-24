@@ -21,6 +21,7 @@ class NerWorker(BaseWorker):
             import mlflow.spacy
 
             self._nlp = mlflow.spacy.load_model(uri)
+            self._on_model_loaded()
             self.logger.info("NER model loaded from MLflow")
             return
 
@@ -37,6 +38,7 @@ class NerWorker(BaseWorker):
 
         self.logger.info("Loading spaCy model from %s", path)
         self._nlp = spacy.load(path)
+        self._on_model_loaded()
         self.logger.info("spaCy model loaded")
 
     async def process(self, data: dict) -> None:
